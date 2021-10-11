@@ -1,0 +1,480 @@
+{*******************************************************************************
+
+  ABF Visual Components Library
+
+  Copyright (c) 2000-2005 ABF software, Inc.
+  All Rights Reserved.
+
+  e-mail: info@abf-dev.com
+  web:    http://www.abf-dev.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+  RESTRICTIONS
+
+  THE SOURCE CODE CONTAINED WITHIN THIS FILE AND ALL RELATED FILES OR ANY
+PORTION OF ITS CONTENTS SHALL AT NO TIME BE COPIED, TRANSFERRED, SOLD,
+DISTRIBUTED, OR OTHERWISE MADE AVAILABLE TO OTHER INDIVIDUALS WITHOUT EXPRESS
+WRITTEN CONSENT AND PERMISSION FROM THE ABF SOFTWARE, INC.
+
+  CONSULT THE END USER LICENSE AGREEMENT (EULA) FOR INFORMATION ON ADDITIONAL
+RESTRICTIONS.
+
+*******************************************************************************}
+unit abfComboBoxes;
+
+{$I abf.inc}
+
+interface
+
+uses
+{$IfDef D4}
+  ImgList,
+{$EndIf D4}
+  Windows, Messages, Classes, Controls, Graphics, StdCtrls, Forms, Menus,
+  abfControls;
+
+type
+
+//==============================================================================
+// TabfDrawComboBox
+//==============================================================================
+// A prototype of custom drawing comboboxes.
+
+  TabfDrawComboBoxStyle = csDropDown..csDropDownList;
+
+  TabfDrawComboBox = class(TabfCustomComboBox)
+  private
+    FBorderStyle: TBorderStyle;
+    FStyle: TabfDrawComboBoxStyle;
+    procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
+  protected
+    procedure CreateParams(var Params: TCreateParams); override;
+    procedure CreateWnd; override;
+  // Properties Get/Set
+    procedure SetStyle(A: TabfDrawComboBoxStyle);{$IfDef D4}reintroduce;{$Else}virtual;{$EndIf}
+    procedure SetBorderStyle(A: TBorderStyle); virtual;
+  // Properties
+    property BorderStyle: TBorderStyle read FBorderStyle write SetBorderStyle
+      default bsSingle;
+  public
+    constructor Create(AOwner: TComponent); override;
+  // Properties
+    property Style: TabfDrawComboBoxStyle read FStyle write SetStyle
+      default csDropDownList;
+  end;{TabfDrawComboBox = class(TCustomComboBox)}
+
+
+//==============================================================================
+// TabfColorComboBox
+//==============================================================================
+// A color picker combobox.
+
+  TabfColorItemStyle = (cisColorAndText, cisColor, cisText);
+  TabfColorNameStyle = (cnsStandard, cnsFromList, cnsHex6, cnsHex8,
+    cnsRGBPercents, cnsRGBDecimal, cnsRGBHex, cnsHexTriple);
+  TabfColorsSet = (cls16, cls8, cls2, clsText, clsBackground, clsSystem,
+    clsAll);
+
+  TabfColorComboBox = class(TabfDrawComboBox)
+  private
+    FListSelected: Boolean;
+    FColorItemStyle: TabfColorItemStyle;
+    FColorNameStyle: TabfColorNameStyle;
+    FColorNames: TStrings;
+    FColorSample: TBitmap;
+    FColorSampleWidth: Integer;
+    FColorsSet: TabfColorsSet;
+    FSelectedColor: TColor;
+    FCustomColor: TColor;
+    FCustomColorAutoSelect: Boolean;
+    FCustomColorCaption: string;
+    FUseColorCustom: Boolean;
+    FUseColorNone: Boolean;
+    FUseColorDefault: Boolean;
+    FUpdate: Boolean;
+    FOnChange: TNotifyEvent;
+    procedure ColorNamesChange(Sender: TObject);
+    procedure ColorSampleChange(Sender: TObject);
+  // Properties Get/Set
+    procedure SetColorItemStyle(A: TabfColorItemStyle);
+    procedure SetColorNameStyle(A: TabfColorNameStyle);
+    procedure SetColorNames(const A: TStrings);
+    procedure SetColorSample(const A: TBitmap);
+    procedure SetColorSampleWidth(A: Integer);
+    function  GetColorCount: Integer;
+    function  GetColors(Index: Integer): TColor;
+    procedure SetColorsSet(A: TabfColorsSet);
+    function  GetSelectedColor: TColor;
+    procedure SetSelectedColor(A: TColor);
+    procedure SetCustomColor(A: TColor);
+    procedure SetCustomColorCaption(const A: string);
+    procedure SetUseColorDefault(A: Boolean);
+    procedure SetUseColorNone(A: Boolean);
+    procedure SetUseColorCustom(A: Boolean);
+  protected
+    procedure CreateWnd; override;
+    procedure DrawItem(Index: Integer; ARect: TRect;
+      State: TOwnerDrawState); override;
+    procedure Loaded; override;
+    procedure InitList; virtual;
+  // Event handlers
+    procedure Change; override;
+    procedure Click; override;
+    procedure KeyDown(var Key: Word; Shift: TShiftState); override;
+    procedure KeyPress(var Key: Char); override;
+    procedure DoChange; dynamic;
+    procedure DropDown; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    function GetColorName(AColor: TColor): string; virtual;
+    function SelectCustomColor: Boolean; virtual;
+  // Properties
+    property Text;
+    property Colors[Index: Integer]: TColor read GetColors;
+    property ColorCount: Integer read GetColorCount;
+  published
+  // Properties
+    property About;
+    property AutoComplete;
+    property AutoDropDown;
+    property Color;
+    property ColorNames: TStrings read FColorNames write SetColorNames; // Must be before ColorNameStyle
+    property ColorItemStyle: TabfColorItemStyle read FColorItemStyle
+      write SetColorItemStyle default cisColorAndText;
+    property ColorNameStyle: TabfColorNameStyle read FColorNameStyle
+      write SetColorNameStyle default cnsStandard;
+    property ColorSample: TBitmap read FColorSample write SetColorSample;
+    property ColorSampleWidth: Integer read FColorSampleWidth
+      write SetColorSampleWidth default 0;
+    property ColorsSet: TabfColorsSet read FColorsSet write SetColorsSet
+      default cls16;
+    property Ctl3D;
+    property CustomColor: TColor read FCustomColor write SetCustomColor
+      stored FUseColorCustom default clDefault;
+    property CustomColorAutoSelect: Boolean read FCustomColorAutoSelect
+      write FCustomColorAutoSelect stored FUseColorCustom default True;
+    property CustomColorCaption: string read FCustomColorCaption
+      write SetCustomColorCaption stored FUseColorCustom;
+    property DragMode;
+    property DragCursor;
+    property DropDownCount;
+    property Enabled;
+    property Etched;
+    property Flat;
+    property FocusBorder;
+    property Font;
+    property ListWidth;
+    property ParentColor;
+    property ParentCtl3D;
+    property ParentFont;
+    property ParentShowHint;
+    property PopupMenu;
+    property ShowHint;
+    property SelectedColor: TColor read GetSelectedColor write SetSelectedColor
+      default clBlack;
+    property Style; // Must be streamed before Items
+    property TabOrder;
+    property TabStop;
+    property UseColorCustom: Boolean read FUseColorCustom
+      write SetUseColorCustom default False;
+    property UseColorDefault: Boolean read FUseColorDefault
+      write SetUseColorDefault default False;
+    property UseColorNone: Boolean read FUseColorNone
+      write SetUseColorNone default False;
+    property Visible;
+{$IfDef D3}
+    property ImeMode;
+    property ImeName;
+{$EndIf D3}
+{$IfDef D4}
+    property Anchors;
+    property BiDiMode;
+    property CharCase;
+    property Constraints;
+    property DragKind;
+    property ParentBiDiMode;
+{$EndIf D4}
+{$IfDef D6}
+    property Action;
+    property BevelEdges;
+    property BevelInner;
+    property BevelKind;
+    property BevelOuter;
+{$EndIf D6}
+  // Events
+    property OnChange: TNotifyEvent read FOnChange write FOnChange;
+    property OnClick;
+    property OnDblClick;
+    property OnDragDrop;
+    property OnDragOver;
+    property OnDropDown;
+    property OnEndDrag;
+    property OnEnter;
+    property OnExit;
+    property OnKeyDown;
+    property OnKeyPress;
+    property OnKeyUp;
+    property OnStartDrag;
+    property OnSelect;
+{$IfDef D4}
+    property OnEndDock;
+    property OnStartDock;
+{$EndIf D4}
+{$IfDef D5}
+    property OnContextPopup;
+{$EndIf D5}
+{$IfDef D6}
+    property OnCloseUp;
+{$EndIf D6}
+  end;{TabfColorComboBox = class(TabfDrawComboBox)}
+
+
+//==============================================================================
+// TabfFontNameComboBox
+//==============================================================================
+// A FontName picker combobox.
+
+  TabfFontDevice = (fdScreen, fdPrinter, fdBoth);
+  TabfFontItemStyle = (fisFont, fisNameOnly, fisSample);
+  TabfFontListOption = (foAnsiOnly, foTrueTypeOnly, foFixedPitchOnly,
+    foNoOEMFonts, foOEMFontsOnly, foScalableOnly);
+  TabfFontListOptions = set of TabfFontListOption;
+
+  TabfFontNameComboBox = class(TabfDrawComboBox)
+  private
+    FFontDevice: TabfFontDevice;
+    FFontItemSample: string;
+    FFontItemStyle: TabfFontItemStyle;
+    FFontOptions: TabfFontListOptions;
+    FUpdate: Boolean;
+    FOnChange: TNotifyEvent;
+    FUseSameFont: Boolean;
+    procedure Reset;
+  // Properties Get/Set
+    procedure SetFontDevice(A: TabfFontDevice);
+    procedure SetFontItemSample(const A: string);
+    procedure SetFontItemStyle(A: TabfFontItemStyle);
+    function  GetFontName: TFontName;
+    procedure SetFontName(const A: TFontName);
+    function  GetFontNameCount: Integer;
+    function  GetFontNames(Index: Integer): TFontName;
+    procedure SetFontOptions(A: TabfFontListOptions);
+    procedure SetUseSameFont(A: Boolean);
+  // Messages
+    procedure WMFontChange(var Message: TMessage); message WM_FONTCHANGE;
+  protected
+    procedure CreateWnd; override;
+    procedure DrawItem(Index: Integer; ARect: TRect;
+      State: TOwnerDrawState); override;
+    function  GetMinItemHeight: Integer; override;
+    procedure Loaded; override;
+    procedure InitList; virtual;
+  // Event handlers
+    procedure Change; override;
+    procedure Click; override;
+    procedure DoChange; dynamic;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  // Properties
+    property Text;
+    property FontNames[Index: Integer]: TFontName read GetFontNames;
+    property FontNameCount: Integer read GetFontNameCount;
+  published
+  // Properties
+    property About;
+    property AutoComplete;
+    property AutoDropDown;
+    property Color;
+    property Ctl3D;
+    property DragMode;
+    property DragCursor;
+    property DropDownCount;
+    property Enabled;
+    property Etched;
+    property Flat;
+    property FocusBorder;
+    property Font;
+    property FontDevice: TabfFontDevice read FFontDevice write SetFontDevice
+      default fdScreen;
+    property FontItemSample: string read FFontItemSample
+      write SetFontItemSample;
+    property FontItemStyle: TabfFontItemStyle read FFontItemStyle
+      write SetFontItemStyle default fisFont;
+    property FontName: TFontName read GetFontName write SetFontName;
+    property FontOptions: TabfFontListOptions read FFontOptions
+      write SetFontOptions default [];
+    property ListWidth;
+    property ParentColor;
+    property ParentCtl3D;
+    property ParentFont;
+    property ParentShowHint;
+    property PopupMenu;
+    property ShowHint;
+    property Style; // Must be streamed before Items
+    property TabOrder;
+    property TabStop;
+    property Visible;
+    property UseSameFont: Boolean read FUseSameFont write SetUseSameFont
+      default False;
+{$IfDef D3}
+    property ImeMode;
+    property ImeName;
+{$EndIf D3}
+{$IfDef D4}
+    property Anchors;
+    property BiDiMode;
+    property CharCase;
+    property Constraints;
+    property DragKind;
+    property ParentBiDiMode;
+{$EndIf D4}
+{$IfDef D6}
+    property Action;
+    property BevelEdges;
+    property BevelInner;
+    property BevelKind;
+    property BevelOuter;
+{$EndIf D6}
+  // Events
+    property OnChange: TNotifyEvent read FOnChange write FOnChange;
+    property OnClick;
+    property OnDblClick;
+    property OnDragDrop;
+    property OnDragOver;
+    property OnDropDown;
+    property OnEndDrag;
+    property OnEnter;
+    property OnExit;
+    property OnKeyDown;
+    property OnKeyPress;
+    property OnKeyUp;
+    property OnStartDrag;
+    property OnSelect;
+{$IfDef D4}
+    property OnEndDock;
+    property OnStartDock;
+{$EndIf D4}
+{$IfDef D5}
+    property OnContextPopup;
+{$EndIf D5}
+{$IfDef D6}
+    property OnCloseUp;
+{$EndIf D6}
+  end;{TabfFontNameComboBox = class(TabfDrawComboBox)}
+
+
+//==============================================================================
+// TabfFontSizeComboBox
+//==============================================================================
+// A FontSize picker combobox.
+
+  TabfFontSizeComboBox = class(TabfCustomComboBox)
+  private
+    FUpdate: Boolean;
+    FOnChange: TNotifyEvent;
+    FFontName: TFontName;
+    procedure SetFontName(A: TFontName);
+    function  GetFontSize: Integer;
+    procedure SetFontSize(A: Integer);
+    function  GetFontSizeCount: Integer;
+    function  GetFontSizes(Index: Integer): Integer;
+  protected
+    procedure CreateWnd; override;
+    procedure InitList; virtual;
+    procedure Click; override;
+    procedure DoChange; dynamic;
+  public
+    constructor Create(AOwner: TComponent); override;
+  // Properties
+    property Text;
+    property FontSizes[Index: Integer]: Integer read GetFontSizes;
+    property FontSizeCount: Integer read GetFontSizeCount;
+  published
+  // Properties
+    property About;
+    property AutoComplete;
+    property AutoDropDown;
+    property Color;
+    property Ctl3D;
+    property DragMode;
+    property DragCursor;
+    property DropDownCount;
+    property Enabled;
+    property Etched;
+    property Flat;
+    property FocusBorder;
+    property Font;
+    property FontName: TFontName read FFontName write SetFontName;
+    property FontSize: Integer read GetFontSize write SetFontSize;
+    property ImageList;
+    property ItemHeight;
+    property ListWidth;
+    property MaxLength;
+    property ParentColor;
+    property ParentCtl3D;
+    property ParentFont;
+    property ParentShowHint;
+    property PopupMenu;
+    property ShowHint;
+    property Style default csDropDown;
+    property TabOrder;
+    property TabStop;
+    property Visible;
+{$IfDef D3}
+    property ImeMode;
+    property ImeName;
+{$EndIf D3}
+{$IfDef D4}
+    property Anchors;
+    property BiDiMode;
+    property CharCase;
+    property Constraints;
+    property DragKind;
+    property ParentBiDiMode;
+{$EndIf D4}
+{$IfDef D6}
+    property Action;
+    property BevelEdges;
+    property BevelInner;
+    property BevelKind;
+    property BevelOuter;
+{$EndIf D6}
+  // Events
+    property OnChange: TNotifyEvent read FOnChange write FOnChange;
+    property OnClick;
+    property OnDblClick;
+    property OnDragDrop;
+    property OnDragOver;
+    property OnDrawItem;
+    property OnDropDown;
+    property OnEndDrag;
+    property OnEnter;
+    property OnExit;
+    property OnKeyDown;
+    property OnKeyPress;
+    property OnKeyUp;
+    property OnMeasureItem;
+    property OnStartDrag;
+    property OnSelect;
+{$IfDef D4}
+    property OnEndDock;
+    property OnStartDock;
+{$EndIf D4}
+{$IfDef D5}
+    property OnContextPopup;
+{$EndIf D5}
+{$IfDef D6}
+    property OnCloseUp;
+{$EndIf D6}
+  end;{TabfFontSizeComboBox = class(TabfDrawComboBox)}
+
+
+{******************************************************************************}
+implementation

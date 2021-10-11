@@ -1,0 +1,331 @@
+{*******************************************************************************
+
+  ABF Visual Components Library
+
+  Copyright (c) 2000-2005 ABF software, Inc.
+  All Rights Reserved.
+
+  e-mail: info@abf-dev.com
+  web:    http://www.abf-dev.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+  RESTRICTIONS
+
+  THE SOURCE CODE CONTAINED WITHIN THIS FILE AND ALL RELATED FILES OR ANY
+PORTION OF ITS CONTENTS SHALL AT NO TIME BE COPIED, TRANSFERRED, SOLD,
+DISTRIBUTED, OR OTHERWISE MADE AVAILABLE TO OTHER INDIVIDUALS WITHOUT EXPRESS
+WRITTEN CONSENT AND PERMISSION FROM THE ABF SOFTWARE, INC.
+
+  CONSULT THE END USER LICENSE AGREEMENT (EULA) FOR INFORMATION ON ADDITIONAL
+RESTRICTIONS.
+
+*******************************************************************************}
+unit abfVclUtils;
+
+{$I abf.inc}
+
+interface
+
+uses
+{$IfDef D3}
+  ShlObj, ActiveX, ComObj,
+{$Else D3}
+  ShlObj2, Ole2,
+{$EndIf D3}
+  Windows, Classes, Controls, SysUtils, Graphics, Registry, Forms, Menus,
+  IniFiles,
+// ABF VCL
+  abfSysUtils, abfClasses;
+
+const
+  CSIDL_LOCAL_APPDATA        = $001c;  // <user name>\Local Settings\Applicaiton Data (non roaming)
+  {$IfDef C3}{$EXTERNALSYM CSIDL_LOCAL_APPDATA}{$EndIf C3}
+  CSIDL_MYMUSIC              = $000d;  // "My Music" folder
+  {$IfDef C3}{$EXTERNALSYM CSIDL_MYMUSIC}{$EndIf C3}
+  CSIDL_MYVIDEO              = $000e;  // "My Videos" folder
+  {$IfDef C3}{$EXTERNALSYM CSIDL_MYVIDEO}{$EndIf C3}
+  CSIDL_MYPICTURES           = $0027;  // C:\Program Files\My Pictures
+  {$IfDef C3}{$EXTERNALSYM CSIDL_MYPICTURES}{$EndIf C3}
+  CSIDL_PROFILE              = $0028;  // USERPROFILE
+  {$IfDef C3}{$EXTERNALSYM CSIDL_PROFILE}{$EndIf C3}
+  CSIDL_PROGRAM_FILES        = $0026;  // C:\Program Files
+  {$IfDef C3}{$EXTERNALSYM CSIDL_PROGRAM_FILES}{$EndIf C3}
+  CSIDL_PROGRAM_FILES_COMMON = $002b;  // C:\Program Files\Common
+  {$IfDef C3}{$EXTERNALSYM CSIDL_PROGRAM_FILES_COMMON}{$EndIf C3}
+
+(*
+#define CSIDL_DESKTOP                   0x0000        // <desktop>
+#define CSIDL_INTERNET                  0x0001        // Internet Explorer (icon on desktop)
+#define CSIDL_PROGRAMS                  0x0002        // Start Menu\Programs
+#define CSIDL_CONTROLS                  0x0003        // My Computer\Control Panel
+#define CSIDL_PRINTERS                  0x0004        // My Computer\Printers
+#define CSIDL_PERSONAL                  0x0005        // My Documents
+#define CSIDL_FAVORITES                 0x0006        // <user name>\Favorites
+#define CSIDL_STARTUP                   0x0007        // Start Menu\Programs\Startup
+#define CSIDL_RECENT                    0x0008        // <user name>\Recent
+#define CSIDL_SENDTO                    0x0009        // <user name>\SendTo
+#define CSIDL_BITBUCKET                 0x000a        // <desktop>\Recycle Bin
+#define CSIDL_STARTMENU                 0x000b        // <user name>\Start Menu
+#define CSIDL_MYDOCUMENTS               0x000c        // logical "My Documents" desktop icon
+#define CSIDL_MYMUSIC                   0x000d        // "My Music" folder
+#define CSIDL_MYVIDEO                   0x000e        // "My Videos" folder
+#define CSIDL_DESKTOPDIRECTORY          0x0010        // <user name>\Desktop
+#define CSIDL_DRIVES                    0x0011        // My Computer
+#define CSIDL_NETWORK                   0x0012        // Network Neighborhood (My Network Places)
+#define CSIDL_NETHOOD                   0x0013        // <user name>\nethood
+#define CSIDL_FONTS                     0x0014        // windows\fonts
+#define CSIDL_TEMPLATES                 0x0015
+#define CSIDL_COMMON_STARTMENU          0x0016        // All Users\Start Menu
+#define CSIDL_COMMON_PROGRAMS           0X0017        // All Users\Start Menu\Programs
+#define CSIDL_COMMON_STARTUP            0x0018        // All Users\Startup
+#define CSIDL_COMMON_DESKTOPDIRECTORY   0x0019        // All Users\Desktop
+#define CSIDL_APPDATA                   0x001a        // <user name>\Application Data
+#define CSIDL_PRINTHOOD                 0x001b        // <user name>\PrintHood
+
+#ifndef CSIDL_LOCAL_APPDATA
+#define CSIDL_LOCAL_APPDATA             0x001c        // <user name>\Local Settings\Applicaiton Data (non roaming)
+#endif // CSIDL_LOCAL_APPDATA
+
+#define CSIDL_ALTSTARTUP                0x001d        // non localized startup
+#define CSIDL_COMMON_ALTSTARTUP         0x001e        // non localized common startup
+#define CSIDL_COMMON_FAVORITES          0x001f
+
+#ifndef _SHFOLDER_H_
+#define CSIDL_INTERNET_CACHE            0x0020
+#define CSIDL_COOKIES                   0x0021
+#define CSIDL_HISTORY                   0x0022
+#define CSIDL_COMMON_APPDATA            0x0023        // All Users\Application Data
+#define CSIDL_WINDOWS                   0x0024        // GetWindowsDirectory()
+#define CSIDL_SYSTEM                    0x0025        // GetSystemDirectory()
+#define CSIDL_PROGRAM_FILES             0x0026        // C:\Program Files
+#define CSIDL_MYPICTURES                0x0027        // C:\Program Files\My Pictures
+#endif // _SHFOLDER_H_
+
+#define CSIDL_PROFILE                   0x0028        // USERPROFILE
+#define CSIDL_SYSTEMX86                 0x0029        // x86 system directory on RISC
+#define CSIDL_PROGRAM_FILESX86          0x002a        // x86 C:\Program Files on RISC
+
+#ifndef _SHFOLDER_H_
+#define CSIDL_PROGRAM_FILES_COMMON      0x002b        // C:\Program Files\Common
+#endif // _SHFOLDER_H_
+
+#define CSIDL_PROGRAM_FILES_COMMONX86   0x002c        // x86 Program Files\Common on RISC
+#define CSIDL_COMMON_TEMPLATES          0x002d        // All Users\Templates
+
+#ifndef _SHFOLDER_H_
+#define CSIDL_COMMON_DOCUMENTS          0x002e        // All Users\Documents
+#define CSIDL_COMMON_ADMINTOOLS         0x002f        // All Users\Start Menu\Programs\Administrative Tools
+#define CSIDL_ADMINTOOLS                0x0030        // <user name>\Start Menu\Programs\Administrative Tools
+#endif // _SHFOLDER_H_
+
+#define CSIDL_CONNECTIONS               0x0031        // Network and Dial-up Connections
+#define CSIDL_COMMON_MUSIC              0x0035        // All Users\My Music
+#define CSIDL_COMMON_PICTURES           0x0036        // All Users\My Pictures
+#define CSIDL_COMMON_VIDEO              0x0037        // All Users\My Video
+#define CSIDL_RESOURCES                 0x0038        // Resource Direcotry
+
+#ifndef _SHFOLDER_H_
+#define CSIDL_RESOURCES_LOCALIZED       0x0039        // Localized Resource Direcotry
+#endif // _SHFOLDER_H_
+
+#define CSIDL_COMMON_OEM_LINKS          0x003a        // Links to All Users OEM specific apps
+#define CSIDL_CDBURN_AREA               0x003b        // USERPROFILE\Local Settings\Application Data\Microsoft\CD Burning
+// unused                               0x003c
+#define CSIDL_COMPUTERSNEARME           0x003d        // Computers Near Me (computered from Workgroup membership)
+
+#ifndef _SHFOLDER_H_
+#define CSIDL_FLAG_CREATE               0x8000        // combine with CSIDL_ value to force folder creation in SHGetFolderPath()
+#endif // _SHFOLDER_H_
+
+#define CSIDL_FLAG_DONT_VERIFY          0x4000        // combine with CSIDL_ value to return an unverified folder path
+#define CSIDL_FLAG_NO_ALIAS             0x1000        // combine with CSIDL_ value to insure non-alias versions of the pidl
+#define CSIDL_FLAG_PER_USER_INIT        0x0800        // combine with CSIDL_ value to indicate per-user init (eg. upgrade)
+#define CSIDL_FLAG_MASK                 0xFF00        // mask for all possible flag values
+*)
+
+
+
+//==============================================================================
+// Misc utilities
+//==============================================================================
+
+//------------------------------------------------------------------------------
+// Provides a waiting (delay) for a given count of MSec (Sec*10^-3). The message
+// processing will continue.
+procedure abfDelay(MSec: Cardinal);
+
+
+//==============================================================================
+// Files/folders utilities
+//==============================================================================
+
+//------------------------------------------------------------------------------
+// Copies files specified in the given FileList string list. Formats of the
+// FileList item are 'SrcFile=DstFile', 'SrcFile', 'SrcFile=*.dll',
+// 'SrcFile=App.*'
+function abfCopyFiles(const AFileList: TStrings): Boolean;
+
+//------------------------------------------------------------------------------
+// Copies SrcFile to DstFile with events. Any event can be nil.
+function abfCopyFileWithEvents(const SrcFile, DstFile: string;
+  OnError: TabfCopyThreadErrorEvent; OnProgress: TabfCopyThreadProgressEvent;
+  OnFinish: TNotifyEvent): Boolean;
+
+//------------------------------------------------------------------------------
+// Removes specified directory even if it is not empty.
+// Date: 07/09/2001
+procedure abfRemoveDir(const DirName: string);
+
+//------------------------------------------------------------------------------
+// Empties specified directory.
+// Date: 07/09/2001
+procedure abfClearDir(const DirName: string);
+
+//------------------------------------------------------------------------------
+// Retrieves the location of a special folder.
+function abfGetSpecialFolderLocation(nFolder: Integer): string;
+
+//------------------------------------------------------------------------------
+// Retrieves the path of the Favorites folder.
+function abfGetFavoritesDir: string;
+
+//------------------------------------------------------------------------------
+// Retrieves the path of the SendTo folder.
+function abfGetSendToDir: string;
+
+//------------------------------------------------------------------------------
+// Runs Create Shortcut wizard for creating shortcut in the specified folder
+function abfRunShortcutWizard(const DirName: string): Boolean;
+
+{$IfDef D3}
+//------------------------------------------------------------------------------
+// Creates shortcut/link with given data. HotKeyText format is a text
+// interpretation of the HotKey "Ctrl+Shift+Z" for example. If HotKeyText = ''
+// then HotKey value will be taken from HotKey parameter. ShowFlag can be
+// SW_SHOWNORMAL, SW_SHOWMAXIMIZED or SW_SHOWMINNOACTIVE.
+function abfCreateShellLink(const FileName, CommandLine, Arguments,
+  WorkingDirectory, Description, IconLocation: string; IconIndex: Integer;
+  HotKey: Word; const HotKeyText: string; ShowFlag: Integer): Boolean;
+
+//------------------------------------------------------------------------------
+// Reads shortcut/link file data of file specified by FileName parameter.
+// HotKeyText format is a text interpretation of the HotKey "Ctrl+Shift+Z" for
+// example.
+function abfReadShellLink(const FileName: string; var CommandLine, Arguments,
+  WorkingDirectory, Description, IconLocation: string; var IconIndex: Integer;
+  var HotKey: Word; var HotKeyText: string; var ShowFlag: Integer): Boolean;
+{$EndIf D3}
+
+
+//==============================================================================
+// Components/Controls utilities
+//==============================================================================
+
+//------------------------------------------------------------------------------
+// Components enumerator. Calls Proc for each child components of Container that
+// match goven ChildClass. Enumerates all components if ChildClass = nil
+
+procedure abfForEachComponent(const Container: TComponent;
+  ChildClass: TComponentClass; Proc: TNotifyEvent);
+
+//------------------------------------------------------------------------------
+// Controls enumerator. Calls Proc for each child controls of Container that
+// match goven ChildClass. Enumerates all controls if ChildClass = nil
+procedure abfForEachControl(const Container: TWinControl;
+  ChildClass: TControlClass; Proc: TNotifyEvent);
+
+//==============================================================================
+// Application, forms
+//==============================================================================
+
+//------------------------------------------------------------------------------
+// Restores application's button at the taskbar.
+procedure abfApplicationTaskBarButtonShow;
+
+//------------------------------------------------------------------------------
+// Removes application's button from the taskbar.
+procedure abfApplicationTaskBarButtonHide;
+
+//------------------------------------------------------------------------------
+// Shows main form of the application and restores application's button at the
+// taskbar.
+procedure abfMainFormShow;
+
+//------------------------------------------------------------------------------
+// Hides main form of the application and removes application's button from the
+// taskbar.
+procedure abfMainFormHide;
+
+//------------------------------------------------------------------------------
+// Returns coordinates of screen where the specified form is placed.
+// Date: 01/16/2003
+function abfGetWorkAreaRectByForm(const Form: TForm): TRect;
+
+//------------------------------------------------------------------------------
+// Returns coordinates of screen where the specified point is placed.
+// Date: 10/22/2003
+function abfGetWorkAreaRectByPoint(X, Y: Integer): TRect;
+
+//------------------------------------------------------------------------------
+// Centeres the SlaveForm form upon the MasterForm form and alligned to screen
+procedure abfFormCenterForm(const SlaveForm, MasterForm: TForm);
+
+//------------------------------------------------------------------------------
+// Sets a position of the given form to be fully fit the nearest monitor
+procedure abfFormFitToScreen(const Form: TForm);
+
+//------------------------------------------------------------------------------
+// Sets a position of the given form to be centerd to the nearest monitor
+// Date: 01/16/2003
+procedure abfFormCenterScreen(const Form: TForm);
+
+//------------------------------------------------------------------------------
+// Searches for the previous instance of the running application. Returns handle
+// of the prev instance or the current one.
+function abfFindPrevInstance: HWnd;
+
+//------------------------------------------------------------------------------
+// Activates the previous instance of the running application. Returns True if
+// prev instance successfully activated.
+function abfActivatePrevInstance: Boolean;
+
+//------------------------------------------------------------------------------
+// Opens/runs specified file.
+procedure abfShellExecute(const FileName: string);
+
+//------------------------------------------------------------------------------
+// Loads icons from shell32.dll by index
+procedure abfGetShell32Icon(IconIndex: Integer; const LargeIcon,
+  SmallIcon: TIcon);
+
+
+//==============================================================================
+// Internet utilities
+//==============================================================================
+
+//------------------------------------------------------------------------------
+// Opens specified link in the default browser. A new browser window will be
+// created if the NewWindow parameter is True.
+procedure abfGotoUrlEx(const URL: string; NewWindow: Boolean);
+
+//------------------------------------------------------------------------------
+// Opens specified link in the default browser
+procedure abfGotoUrl(const URL: string);
+
+//------------------------------------------------------------------------------
+// Creates e-mail message in the default mail browser
+// Note: Under constraction!
+procedure abfSendEmailEx(const Address, Subject, Body: string);
+
+//------------------------------------------------------------------------------
+// Creates e-mail message in the default mail browser
+procedure abfSendEmail(const Address, Subject: string);
+
+
+{******************************************************************************}
+implementation

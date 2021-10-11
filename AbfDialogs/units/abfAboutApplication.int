@@ -1,0 +1,111 @@
+{*******************************************************************************
+
+  ABF Visual Components Library
+
+  Copyright (c) 2000-2005 ABF software, Inc.
+  All Rights Reserved.
+
+  e-mail: info@abf-dev.com
+  web:    http://www.abf-dev.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+  RESTRICTIONS
+
+  THE SOURCE CODE CONTAINED WITHIN THIS FILE AND ALL RELATED FILES OR ANY
+PORTION OF ITS CONTENTS SHALL AT NO TIME BE COPIED, TRANSFERRED, SOLD,
+DISTRIBUTED, OR OTHERWISE MADE AVAILABLE TO OTHER INDIVIDUALS WITHOUT EXPRESS
+WRITTEN CONSENT AND PERMISSION FROM THE ABF SOFTWARE, INC.
+
+  CONSULT THE END USER LICENSE AGREEMENT (EULA) FOR INFORMATION ON ADDITIONAL
+RESTRICTIONS.
+
+*******************************************************************************}
+unit abfAboutApplication;
+
+{$I abf.inc}
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
+  ExtCtrls, StdCtrls, Buttons;
+
+{$IfNDef D3}
+const
+  crHandPoint = crUpArrow;
+{$EndIf D3}
+
+type
+
+//==============================================================================
+// TfrmAboutApplication
+//==============================================================================
+// Application about form.
+
+  TfrmAboutApplication = class(TForm)
+    pnLogo: TPanel;
+      imgLogo: TImage;
+    lbName1: TLabel;
+    lbName2: TLabel;
+      lbBy: TLabel;
+    lbABF1: TLabel;
+    lbABF2: TLabel;
+    lbEmailCaption: TLabel;
+      lbEmail: TLabel;
+    lbWebCaption: TLabel;
+      lbWeb: TLabel;
+    lbCopyright: TLabel;
+    bvBottom: TBevel;
+    pnBottom: TPanel;
+      btnRegister: TButton;
+      btnOk: TButton;
+    lbVersion: TLabel;
+    procedure FormMouseMove(Sender: TObject; Shift: TShiftState; X,
+      Y: Integer);
+    procedure URLMouseMove(Sender: TObject; Shift: TShiftState; X,
+      Y: Integer);
+    procedure URLMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure URLMouseUp(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure lbWebClick(Sender: TObject);
+    procedure lbEmailClick(Sender: TObject);
+    procedure btnRegisterClick(Sender: TObject);
+  private
+    FWebSuffix: string;
+    FEmailPrefix: string;
+  // Properties Get/Set
+    function  GetAppName: string;
+    procedure SetAppName(const A: string);
+    function  GetEmailSubject: string;
+    procedure SetEmailPrefix(const A: string);
+    procedure SetWebSuffix(const A: string);
+  public
+    constructor Create(AOwner: TComponent); override;
+    property AppName: string read GetAppName write SetAppName;
+    property EmailSubject: string read GetEmailSubject;
+    property EmailPrefix: string read FEmailPrefix write SetEmailPrefix;
+    property WebSuffix: string read FWebSuffix write SetWebSuffix;
+  end;
+
+//------------------------------------------------------------------------------
+// Do not remark a varible declaration! It is needed for C++Builder 4 and lower!
+
+var
+  frmAboutApplication: TfrmAboutApplication;
+
+//==============================================================================
+// Application about routines
+//==============================================================================
+
+procedure abfApplicationAboutEx(const AName, AVersion, AWebSuffix,
+  AEmailPrefix: string; ARegButton: Boolean; const ALogo: TGraphic);
+procedure abfApplicationAbout(const AName: string);
+
+{******************************************************************************}
+implementation

@@ -1,0 +1,495 @@
+{*******************************************************************************
+
+  ABF Visual Components Library
+
+  Copyright (c) 2000-2005 ABF software, Inc.
+  All Rights Reserved.
+
+  e-mail: info@abf-dev.com
+  web:    http://www.abf-dev.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse-engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+  Restrictions
+
+  The source code contained within this file and all related files or any
+portion of its contents shall at no time be copied, transferred, sold,
+distributed, or otherwise made available to other individuals without express
+written consent and permission from the ABF software, Inc.
+
+  Consult the End User License Agreement (EULA) for information on additional
+restrictions.
+
+*******************************************************************************}
+unit abfPropertyDesc;
+
+{$I abf.inc}
+
+interface
+
+uses
+  Windows, SysUtils, Classes, Graphics, Controls, StdCtrls, TypInfo,
+  abfClasses;
+
+type
+
+//==============================================================================
+// TabfPropertyDesc
+//==============================================================================
+// TabfPropertyDesc is a prototype of all property descriptors.
+
+  TabfPropertyDesc = class(TPersistent)
+  private
+    FOwner: TPersistent;
+    FOnChange: TNotifyEvent;
+    FCallBack: TabfObjectCallBack;
+  protected
+    procedure SetOnChange(A: TNotifyEvent); virtual;
+  public
+    constructor Create(AOwner: TPersistent;
+      ACallBack: TabfObjectCallBack); virtual;
+    procedure Assign(Source: TPersistent); override;
+    procedure Invalidate; virtual;
+  // Properties
+    property Owner: TPersistent read FOwner;
+    property CallBack: TabfObjectCallBack read FCallBack;
+    property OnChange: TNotifyEvent read FOnChange write SetOnChange;
+  end;
+
+//==============================================================================
+// TabfMarginsDesc
+//==============================================================================
+// Descriptor for margins properties
+
+  TabfMarginsUnits = (muPixels, muInches, muMillimeters, muCentimeters);
+
+  TabfMarginsDesc = class(TabfPropertyDesc)
+  private
+    FLeft: Double;
+    FTop: Double;
+    FRight: Double;
+    FBottom: Double;
+    FUnits: TabfMarginsUnits;
+  // Properties Get/Set
+    procedure SetLeft(Value: Double);
+    procedure SetTop(Value: Double);
+    procedure SetRight(Value: Double);
+    procedure SetBottom(Value: Double);
+    procedure SetUnits(Value: TabfMarginsUnits);
+  public
+    constructor Create(AOwner: TPersistent;
+      ACallBack: TabfObjectCallBack); override;
+    constructor CreateWithData(AOwner: TPersistent;
+      ACallBack: TabfObjectCallBack; ALeft, ATop, ARight, ABottom: Double;
+      AUnits: TabfMarginsUnits);
+    procedure Assign(Source: TPersistent); override;
+  published
+    property Left: Double read FLeft write SetLeft;
+    property Top: Double read FTop write SetTop;
+    property Right: Double read FRight write SetRight;
+    property Bottom: Double read FBottom write SetBottom;
+    property Units: TabfMarginsUnits read FUnits write SetUnits
+      default muPixels;
+  end;
+
+//==============================================================================
+// TabfTextDecorationDesc
+//==============================================================================
+// Descriptor for text decorations.
+
+  TabfTextDecorationDesc = class(TabfPropertyDesc)
+  private
+    FColor: TColor;
+    FStyle: TFontStyles;
+    procedure SetColor(A: TColor);
+    procedure SetStyle(A: TFontStyles);
+  public
+    constructor Create(AOwner: TPersistent;
+      ACallBack: TabfObjectCallBack); override;
+    constructor CreateWithData(AOwner: TPersistent;
+      ACallBack: TabfObjectCallBack; AColor: TColor; AStyle: TFontStyles);
+    procedure Assign(Source: TPersistent); override;
+  published
+    property Color: TColor read FColor write SetColor;
+    property Style: TFontStyles read FStyle write SetStyle; // no default !!!
+  end;
+
+//==============================================================================
+// TabfColorDecorationDesc
+//==============================================================================
+// Descriptor for color decorations.
+
+  TabfColorDecorationDesc = class(TabfPropertyDesc)
+  private
+    FColor: TColor;
+    FVisible: Boolean;
+    procedure SetColor(A: TColor);
+    procedure SetVisible(A: Boolean);
+  public
+    constructor Create(AOwner: TPersistent;
+      ACallBack: TabfObjectCallBack); override;
+    constructor CreateWithData(AOwner: TPersistent;
+      ACallBack: TabfObjectCallBack; AColor: TColor; AVisible: Boolean);
+    procedure Assign(Source: TPersistent); override;
+  published
+    property Color: TColor  read FColor write SetColor;
+    property Visible: Boolean read FVisible write SetVisible;
+  end;
+
+//==============================================================================
+// TabfBorderDecorationDesc
+//==============================================================================
+// Descriptor for Border, Shadow or other decorations.
+
+  TabfBorderDecorationDesc = class(TabfPropertyDesc)
+  private
+    FColor: TColor;
+    FVisible: Boolean;
+    FSizeX: Integer;
+    FSizeY: Integer;
+    procedure SetColor(A: TColor);
+    procedure SetVisible(A: Boolean);
+    procedure SetSizeX(A: Integer);
+    procedure SetSizeY(A: Integer);
+  public
+    constructor Create(AOwner: TPersistent;
+      ACallBack: TabfObjectCallBack); override;
+    constructor CreateWithData(AOwner: TPersistent;
+      ACallBack: TabfObjectCallBack; AVisible: Boolean; AColor: TColor;
+      ASizeX, ASizeY: Integer); virtual;
+    procedure Assign(Source: TPersistent); override;
+  published
+    property Visible: Boolean read FVisible write SetVisible;
+    property Color: TColor  read FColor write SetColor;
+    property SizeX: Integer read FSizeX write SetSizeX default 1;
+    property SizeY: Integer read FSizeY write SetSizeY default 1;
+  end;
+
+//==============================================================================
+// TabfRunTimeDesc
+//==============================================================================
+// A prototype of all 4 run-time states property descriptors.
+
+  TabfRunTimeDesc = class(TabfPropertyDesc)
+  private
+    FRunTimeState: TabfRunTimeState;
+    FUseOnlyNormal: Boolean;
+  protected
+    procedure SetRunTimeState(A: TabfRunTimeState); virtual;
+    procedure SetUseOnlyNormal(A: Boolean); virtual;
+  // Properties
+    property UseOnlyNormal: Boolean read FUseOnlyNormal write SetUseOnlyNormal
+      default False;
+  public
+    procedure Assign(Source: TPersistent); override;
+  // Properties
+    property RunTimeState: TabfRunTimeState read FRunTimeState
+      write SetRunTimeState;
+  end;
+
+//==============================================================================
+// TabfRunTimeBooleanDesc
+//==============================================================================
+// Boolean 4 run-time states property descriptor.
+
+  TabfRunTimeBooleanDesc = class(TabfRunTimeDesc)
+  private
+    FNormal  : Boolean;
+    FSelected: Boolean;
+    FActive  : Boolean;
+    FDisabled: Boolean;
+    function  GetCurrent: Boolean;
+    procedure SetNormal  (A: Boolean);
+    procedure SetSelected(A: Boolean);
+    procedure SetActive  (A: Boolean);
+    procedure SetDisabled(A: Boolean);
+  public
+    constructor CreateWithData(AOwner: TPersistent;
+      ACallBack: TabfObjectCallBack;
+      ANormal, ASelected, AActive, ADisabled: Boolean); virtual;
+    procedure Assign(Source: TPersistent); override;
+  // Properties
+    property Current: Boolean read GetCurrent;
+  published
+    property Normal  : Boolean read FNormal   write SetNormal;
+    property Selected: Boolean read FSelected write SetSelected;
+    property Active  : Boolean read FActive   write SetActive;
+    property Disabled: Boolean read FDisabled write SetDisabled;
+  end;
+
+//==============================================================================
+// TabfRunTimeColorDesc
+//==============================================================================
+// TColor 4 run-time states property descriptor.
+
+  TabfRunTimeColorDesc = class(TabfRunTimeDesc)
+  private
+    FNormal  : TColor;
+    FSelected: TColor;
+    FActive  : TColor;
+    FDisabled: TColor;
+    function  GetCurrent: TColor;
+    procedure SetNormal  (A: TColor);
+    procedure SetSelected(A: TColor);
+    procedure SetActive  (A: TColor);
+    procedure SetDisabled(A: TColor);
+  public
+    constructor CreateWithData(AOwner: TPersistent;
+      ACallBack: TabfObjectCallBack;
+      ANormal, ASelected, AActive, ADisabled: TColor); virtual;
+    procedure Assign(Source: TPersistent); override;
+  // Properties
+    property Current: TColor read GetCurrent;
+  published
+    property Normal  : TColor read FNormal   write SetNormal;
+    property Selected: TColor read FSelected write SetSelected;
+    property Active  : TColor read FActive   write SetActive;
+    property Disabled: TColor read FDisabled write SetDisabled;
+  end;
+
+//==============================================================================
+// TabfRunTimeCursorDesc
+//==============================================================================
+// TCursor 4 run-time states property descriptor.
+
+  TabfRunTimeCursorDesc = class(TabfRunTimeDesc)
+  private
+    FNormal  : TCursor;
+    FSelected: TCursor;
+    FActive  : TCursor;
+    FDisabled: TCursor;
+    function  GetCurrent: TCursor;
+    procedure SetNormal  (A: TCursor);
+    procedure SetSelected(A: TCursor);
+    procedure SetActive  (A: TCursor);
+    procedure SetDisabled(A: TCursor);
+  public
+    constructor CreateWithData(AOwner: TPersistent;
+      ACallBack: TabfObjectCallBack;
+      ANormal, ASelected, AActive, ADisabled: TCursor); virtual;
+    procedure Assign(Source: TPersistent); override;
+  // Properties
+    property Current: TCursor read GetCurrent;
+  published
+    property Normal  : TCursor read FNormal   write SetNormal;
+    property Selected: TCursor read FSelected write SetSelected;
+    property Active  : TCursor read FActive   write SetActive;
+    property Disabled: TCursor read FDisabled write SetDisabled;
+  end;
+
+//==============================================================================
+// TabfRunTimeBitmapDesc
+//==============================================================================
+// TBitmap 4 run-time states property descriptor.
+
+  TabfRunTimeBitmapDesc = class(TabfRunTimeDesc)
+  private
+    FNormal  : TBitmap;
+    FSelected: TBitmap;
+    FActive  : TBitmap;
+    FDisabled: TBitmap;
+    function  GetCurrent: TBitmap;
+    procedure SetNormal  (A: TBitmap);
+    procedure SetSelected(A: TBitmap);
+    procedure SetActive  (A: TBitmap);
+    procedure SetDisabled(A: TBitmap);
+  public
+    constructor Create(AOwner: TPersistent;
+      ACallBack: TabfObjectCallBack); override;
+    constructor CreateWithData(AOwner: TPersistent;
+      ACallBack: TabfObjectCallBack;
+      ANormal, ASelected, AActive, ADisabled: TBitmap); virtual;
+    destructor Destroy; override;
+    procedure Assign(Source: TPersistent); override;
+  // Properties
+    property Current: TBitmap read GetCurrent;
+  published
+    property Normal  : TBitmap read FNormal   write SetNormal;
+    property Selected: TBitmap read FSelected write SetSelected;
+    property Active  : TBitmap read FActive   write SetActive;
+    property Disabled: TBitmap read FDisabled write SetDisabled;
+  end;
+
+//==============================================================================
+// TabfRunTimePictureDesc
+//==============================================================================
+// TPicture 4 run-time states property descriptor.
+
+  TabfRunTimePictureDesc = class(TabfRunTimeDesc)
+  private
+    FNormal  : TPicture;
+    FSelected: TPicture;
+    FActive  : TPicture;
+    FDisabled: TPicture;
+    function  GetCurrent: TPicture;
+    procedure SetNormal  (A: TPicture);
+    procedure SetSelected(A: TPicture);
+    procedure SetActive  (A: TPicture);
+    procedure SetDisabled(A: TPicture);
+  public
+    constructor Create(AOwner: TPersistent;
+      ACallBack: TabfObjectCallBack); override;
+    constructor CreateWithData(AOwner: TPersistent;
+      ACallBack: TabfObjectCallBack;
+      ANormal, ASelected, AActive, ADisabled: TPicture); virtual;
+    destructor Destroy; override;
+    procedure Assign(Source: TPersistent); override;
+  // Properties
+    property Current: TPicture read GetCurrent;
+  published
+    property Normal  : TPicture read FNormal   write SetNormal;
+    property Selected: TPicture read FSelected write SetSelected;
+    property Active  : TPicture read FActive   write SetActive;
+    property Disabled: TPicture read FDisabled write SetDisabled;
+  end;
+
+//==============================================================================
+// TabfRunTimeFontDesc
+//==============================================================================
+// TFont 4 run-time states property descriptor.
+
+  TabfRunTimeFontDesc = class(TabfRunTimeDesc)
+  private
+    FNormal  : TFont;
+    FSelected: TFont;
+    FActive  : TFont;
+    FDisabled: TFont;
+    function  GetCurrent: TFont;
+    procedure SetNormal  (A: TFont);
+    procedure SetSelected(A: TFont);
+    procedure SetActive  (A: TFont);
+    procedure SetDisabled(A: TFont);
+  public
+    constructor Create(AOwner: TPersistent;
+      ACallBack: TabfObjectCallBack); override;
+    constructor CreateWithData(AOwner: TPersistent;
+      ACallBack: TabfObjectCallBack;
+      ANormal, ASelected, AActive, ADisabled: TFont); virtual;
+    destructor Destroy; override;
+    procedure Assign(Source: TPersistent); override;
+  // Properties
+    property Current: TFont read GetCurrent;
+  published
+    property Normal  : TFont read FNormal   write SetNormal;
+    property Selected: TFont read FSelected write SetSelected;
+    property Active  : TFont read FActive   write SetActive;
+    property Disabled: TFont read FDisabled write SetDisabled;
+  end;
+
+//==============================================================================
+// TabfRunTimeTextDecorationDesc
+//==============================================================================
+// Text decoration 4 run-time states property descriptor.
+
+  TabfRunTimeTextDecorationDesc = class(TabfRunTimeDesc)
+  private
+    FNormal  : TabfTextDecorationDesc;
+    FSelected: TabfTextDecorationDesc;
+    FActive  : TabfTextDecorationDesc;
+    FDisabled: TabfTextDecorationDesc;
+    function  GetCurrent: TabfTextDecorationDesc;
+    procedure SetNormal  (A: TabfTextDecorationDesc);
+    procedure SetSelected(A: TabfTextDecorationDesc);
+    procedure SetActive  (A: TabfTextDecorationDesc);
+    procedure SetDisabled(A: TabfTextDecorationDesc);
+  protected
+    procedure SetOnChange(A: TNotifyEvent); override;
+  public
+    constructor Create(AOwner: TPersistent;
+      ACallBack: TabfObjectCallBack); override;
+    constructor CreateWithData(AOwner: TPersistent;
+      ACallBack: TabfObjectCallBack;
+      ANormal, ASelected, AActive, ADisabled: TabfTextDecorationDesc); virtual;
+    destructor Destroy; override;
+    procedure Assign(Source: TPersistent); override;
+  // Properties
+    property Current: TabfTextDecorationDesc read GetCurrent;
+  published
+    property Normal  : TabfTextDecorationDesc read FNormal   write SetNormal;
+    property Selected: TabfTextDecorationDesc read FSelected write SetSelected;
+    property Active  : TabfTextDecorationDesc read FActive   write SetActive;
+    property Disabled: TabfTextDecorationDesc read FDisabled write SetDisabled;
+  end;
+
+//==============================================================================
+// TabfRunTimeColorDecorationDesc
+//==============================================================================
+// Color decoration 4 run-time states property descriptor.
+
+  TabfRunTimeColorDecorationDesc = class(TabfRunTimeDesc)
+  private
+    FNormal  : TabfColorDecorationDesc;
+    FSelected: TabfColorDecorationDesc;
+    FActive  : TabfColorDecorationDesc;
+    FDisabled: TabfColorDecorationDesc;
+    FSizeY: Integer;
+    FSizeX: Integer;
+    function  GetCurrent: TabfColorDecorationDesc;
+    procedure SetNormal  (A: TabfColorDecorationDesc);
+    procedure SetSelected(A: TabfColorDecorationDesc);
+    procedure SetActive  (A: TabfColorDecorationDesc);
+    procedure SetDisabled(A: TabfColorDecorationDesc);
+    procedure SetSizeX(A: Integer);
+    procedure SetSizeY(A: Integer);
+  protected
+    procedure SetOnChange(A: TNotifyEvent); override;
+  public
+    constructor Create(AOwner: TPersistent;
+      ACallBack: TabfObjectCallBack); override;
+    constructor CreateWithData(AOwner: TPersistent;
+      ACallBack: TabfObjectCallBack;
+      ANormal, ASelected, AActive, ADisabled: TabfColorDecorationDesc); virtual;
+    destructor Destroy; override;
+    procedure Assign(Source: TPersistent); override;
+  // Properties
+    property Current: TabfColorDecorationDesc read GetCurrent;
+  published
+    property Normal  : TabfColorDecorationDesc read FNormal   write SetNormal;
+    property Selected: TabfColorDecorationDesc read FSelected write SetSelected;
+    property Active  : TabfColorDecorationDesc read FActive   write SetActive;
+    property Disabled: TabfColorDecorationDesc read FDisabled write SetDisabled;
+    property SizeX: Integer read FSizeX write SetSizeX default 1;
+    property SizeY: Integer read FSizeY write SetSizeY default 1;
+  end;
+
+//==============================================================================
+// TabfRunTimeBorderDecorationDesc
+//==============================================================================
+// Border decoration 4 run-time states property descriptor.
+
+  TabfRunTimeBorderDecorationDesc = class(TabfRunTimeDesc)
+  private
+    FNormal  : TabfBorderDecorationDesc;
+    FSelected: TabfBorderDecorationDesc;
+    FActive  : TabfBorderDecorationDesc;
+    FDisabled: TabfBorderDecorationDesc;
+    function  GetCurrent: TabfBorderDecorationDesc;
+    procedure SetNormal  (A: TabfBorderDecorationDesc);
+    procedure SetSelected(A: TabfBorderDecorationDesc);
+    procedure SetActive  (A: TabfBorderDecorationDesc);
+    procedure SetDisabled(A: TabfBorderDecorationDesc);
+  protected
+    procedure SetOnChange(A: TNotifyEvent); override;
+  public
+    constructor Create(AOwner: TPersistent;
+      ACallBack: TabfObjectCallBack); override;
+    constructor CreateWithData(AOwner: TPersistent;
+      ACallBack: TabfObjectCallBack; ANormal, ASelected, AActive,
+      ADisabled: TabfBorderDecorationDesc); virtual;
+    destructor Destroy; override;
+    procedure Assign(Source: TPersistent); override;
+  // Properties
+    property Current: TabfBorderDecorationDesc read GetCurrent;
+  published
+    property Normal  : TabfBorderDecorationDesc read FNormal   write SetNormal;
+    property Selected: TabfBorderDecorationDesc read FSelected write SetSelected;
+    property Active  : TabfBorderDecorationDesc read FActive   write SetActive;
+    property Disabled: TabfBorderDecorationDesc read FDisabled write SetDisabled;
+  end;
+
+{******************************************************************************}
+implementation

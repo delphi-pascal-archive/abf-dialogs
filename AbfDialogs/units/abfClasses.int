@@ -1,0 +1,500 @@
+{*******************************************************************************
+
+  ABF Visual Components Library
+
+  Copyright (c) 2000-2005 ABF software, Inc.
+  All Rights Reserved.
+
+  e-mail: info@abf-dev.com
+  web:    http://www.abf-dev.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+  RESTRICTIONS
+
+  THE SOURCE CODE CONTAINED WITHIN THIS FILE AND ALL RELATED FILES OR ANY
+PORTION OF ITS CONTENTS SHALL AT NO TIME BE COPIED, TRANSFERRED, SOLD,
+DISTRIBUTED, OR OTHERWISE MADE AVAILABLE TO OTHER INDIVIDUALS WITHOUT EXPRESS
+WRITTEN CONSENT AND PERMISSION FROM THE ABF SOFTWARE, INC.
+
+  CONSULT THE END USER LICENSE AGREEMENT (EULA) FOR INFORMATION ON ADDITIONAL
+RESTRICTIONS.
+
+*******************************************************************************}
+unit abfClasses;
+
+{$I abf.inc}
+
+interface
+
+uses
+  Windows, Classes, Messages, SysUtils, ShellAPI,
+// ABF VCL
+  abfConsts;
+
+type
+
+//==============================================================================
+// Misc
+//==============================================================================
+
+  TabfDelphiVer = (dv_D2, dv_C1, dv_D3, dv_C3, dv_D4, dv_C4, dv_D5, dv_C5,
+    dv_D6, dv_C6, dv_D7, dv_D8, dv_D9);
+  TabfDelphiVers = set of TabfDelphiVer;
+  TabfRunTimeState  = (rtsNormal, rtsSelected, rtsActive, rtsDisabled);
+  TabfRunTimeStates = set of TabfRunTimeState;
+  TabfHorzAlign = (haLeft, haCenter, haRight);
+  TabfVertAlign = (vaTop, vaCenter, vaBottom);
+  TabfDirection = (diHorizontal, diVertical);
+
+  TabfCallBack       = procedure;
+  TabfObjectCallBack = procedure of object;
+  TabfFreeNotifyProc = procedure(Instance: TComponent) of object;
+  TabfMessageEvent = procedure(Sender: TObject; var Msg: TMessage;
+    var Handled: Boolean) of object;
+
+  TabfCallbackThunk = packed record
+    POPEDX: Byte;
+    MOVEAX: Byte;
+    SelfPtr: Pointer;
+    PUSHEAX: Byte;
+    PUSHEDX: Byte;
+    JMP: Byte;
+    JmpOffset: Integer;
+  end;
+
+{$IfNDef D5}
+  TIntegerSet = set of 0..SizeOf(Integer) * 8 - 1;
+  TImageIndex = Integer;
+{$EndIf D5}
+
+{$IfNDef D4}
+  LongWord = type Cardinal;
+{$EndIf D4}
+
+{$IfNDef D3}
+// Special for Delphi 2 and C++Builder 1
+  TIdentMapEntry = record
+    Value: Integer;
+    Name: string;
+  end;
+{$EndIf D3}
+
+{$IfNDef D3}
+  {$IfDef Builder}
+  TDate = TDateTime;
+  TTime = TDateTime;
+  {$Else Builder}
+  TDate = type TDateTime;
+  TTime = type TDateTime;
+  {$EndIf Builder}
+{$EndIf D3}
+
+
+//==============================================================================
+// TabfStringList
+//==============================================================================
+// Extended string list. Names now trimmed from right, Values trimmed from left
+// and cut by ','. Added Parameters property (part of Values after the ','
+// delimiter).
+
+  TabfStringList = class(TStringList)
+  private
+    function  GetName(Index: Integer): string;
+    procedure SetName(Index: Integer; const Value: string);
+    function  GetValue(const Name: string): string;
+    procedure SetValue(const Name, Value: string);
+    function  GetParameter(const Name: string): string;
+    procedure SetParameter(const Name, Value: string);
+  public
+    class function CreateItem(const Name, Value,
+      Parameter: string): string; // virtual;
+    class procedure ParseItem(const S: string; var Name, Value,
+      Parameter: string); // virtual;
+    function ExtractName(const S: string): string; virtual;
+    function ExtractValue(const S: string): string; virtual;
+    function ExtractParameter(const S: string): string; virtual;
+    property Names[Index: Integer]: string read GetName write SetName;
+    property Values[const Name: string]: string read GetValue write SetValue;
+    property Parameters[const Name: string]: string read GetParameter
+      write SetParameter;
+  end;
+
+
+//==============================================================================
+// TabfLinkedComponent
+//==============================================================================
+// Use TabfLinkedComponent component in classes that are not descendants of
+// TComponent but needs to respond standard Delphi notification routine. Very
+// useful for persistents that contain information about some component which
+// can be removed from the form or simply destroyed.
+
+  TabfLinkedComponent = class(TComponent)
+  protected
+    FNotifier: TabfFreeNotifyProc;
+    procedure Notification(AComponent: TComponent;
+      Operation: TOperation); override;
+  public
+    constructor CreateInderect(AOwner: TComponent;
+      ANotifier: TabfFreeNotifyProc); virtual;
+    property Notifier: TabfFreeNotifyProc read FNotifier write FNotifier;
+  end;
+
+
+//==============================================================================
+// TabfChannel
+//==============================================================================
+// A class for easy data exchanging between applications and/or dll. Based on
+// Alexander Kramarenko <http://www.akhome.da.ru> TChannel object. Simply
+// specify the Name of chanel, pointer to Data structure and the Data size. If
+// the channel with specified name doesn't exist it will be created, otherwise
+// the instance will be connected to the existed channel.
+
+  EabfChannel = class(Exception);
+
+  TabfChannel = class(TObject)
+  protected
+    FName: string;
+    FMemory: Pointer;
+    FObject: Integer;
+    FSize: Integer;
+    procedure Close; virtual;
+  public
+    constructor Create(const Name: string; var Data; Size: Integer); virtual;
+    destructor Destroy; override;
+    procedure Clean; virtual;
+  end;
+
+  
+//==============================================================================
+// TabfFileVersionInfo
+//==============================================================================
+// TabfFileVersionInfo is a class that enables you to read the version
+// information from an executable file (exe, dll etc.). Besides allowing read
+// standard version key such as ProductName and FileVersion this class also
+// allows you to read custom keys through the UserKeys property. Based on
+// TJclFileVersionInfo class from JCL <http://www.delphi-jedi.org>
+
+  TabfFileVersionFlag = (fvfDebug, fvfInfoInferred, fvfPatched, fvfPreRelease,
+    fvfPrivateBuild, fvfSpecialBuild);
+  TabfFileVersionFlags = set of TabfFileVersionFlag;
+
+  EabfFileVersionInfo = class(Exception);
+
+  TabfFileVersionInfo = class(TObject)
+    FBuffer: string;
+    FFileFlags: TabfFileVersionFlags;
+    FFileName: string;
+    FFixedBuffer: PVSFixedFileInfo;
+    FLanguageIndex: Integer;
+    FLanguages: TStrings;
+    procedure InitFileFlags;
+  protected
+    procedure GetVersionInfo;
+    procedure ExtractLanguageIds;
+  // Properties Get/Set
+    function GetBinFileVersion: string;
+    function GetBinProductVersion: string;
+    function GetFileOS: LongWord;
+    function GetFileSubType: LongWord;
+    function GetFileType: LongWord;
+    function GetLanguageCount: Integer;
+    function GetLanguageIds(Index: Integer): string;
+    function GetLanguageNames(Index: Integer): string;
+    procedure SetLanguageIndex(A: Integer);
+    function GetUserKey(const Key: string): string;
+    function GetVersionKeyValue(Index: Integer): string;
+  public
+    constructor Create(const AFileName: string);
+    constructor CreateFromBlock(const Buffer: string; Dummy: Integer);
+    destructor Destroy; override;
+  // Properties 
+    property Comments: string index 1 read GetVersionKeyValue;
+    property CompanyName: string index 2 read GetVersionKeyValue;
+    property FileDescription: string index 3 read GetVersionKeyValue;
+    property FileFlags: TabfFileVersionFlags read FFileFlags;
+    property FileOS: LongWord read GetFileOS;
+    property FileSubType: LongWord read GetFileSubType;
+    property FileType: LongWord read GetFileType;
+    property FileVersion: string index 4 read GetVersionKeyValue;
+    property InternalName: string index 5 read GetVersionKeyValue;
+    property LanguageCount: Integer read GetLanguageCount;
+    property LanguageIndex: Integer read FLanguageIndex write SetLanguageIndex;
+    property LanguageIds[Index: Integer]: string read GetLanguageIds;
+    property LanguageNames[Index: Integer]: string read GetLanguageNames;
+    property LegalCopyright: string index 6 read GetVersionKeyValue;
+    property LegalTradeMarks: string index 7 read GetVersionKeyValue;
+    property OriginalFilename: string index 8 read GetVersionKeyValue;
+    property ProductName: string index 9 read GetVersionKeyValue;
+    property ProductVersion: string index 10 read GetVersionKeyValue;
+    property SpecialBuild: string index 11 read GetVersionKeyValue;
+    property PrivateBuild: string index 12 read GetVersionKeyValue;
+    property UserKeys[const Key: string]: string read GetUserKey;
+    property BinFileVersion: string read GetBinFileVersion;
+    property BinProductVersion: string read GetBinProductVersion;
+  end;{TabfFileVersionInfo = class(TObject)}
+
+
+//==============================================================================
+// TabfThread
+//==============================================================================
+// Enhanced thread, Terminate property True after execution. Also has Finished
+// property
+
+  TabfThread = class(TThread)
+  private
+    FOnFinish: TNotifyEvent;
+  protected
+    FFinished: Boolean;
+    procedure Execute; override;
+    procedure Finish; virtual;
+    procedure DoFinish; dynamic;
+  public
+    property Terminated;
+    property Finished: Boolean read FFinished;
+    property OnFinish: TNotifyEvent read FOnFinish write FOnFinish;
+  end;
+
+
+//==============================================================================
+// TabfEventThread
+//==============================================================================
+// A thread that have OnExecute event.
+
+  TabfEventThread = class(TabfThread)
+  private
+    FOnExecute: TNotifyEvent;
+    FSynchronized: Boolean;
+  protected
+    procedure Execute; override;
+    procedure DoExecute; virtual;
+  public
+  // Properties
+    property Synchronized: Boolean read FSynchronized write FSynchronized;
+  // Events
+    property OnExecute: TNotifyEvent read FOnExecute write FOnExecute;
+  end;
+
+
+//==============================================================================
+// TabfTimerThread
+//==============================================================================
+// A thread for creating timers.
+
+  TabfTimerThread = class(TabfEventThread)
+  private
+    FInterval: Cardinal;
+    procedure SetInterval(Value: Cardinal);
+  protected
+    FStopHandle: THandle;
+    procedure Execute; override;
+    procedure Stop; virtual;
+  public
+    constructor Create(CreateSuspended: Boolean);
+    destructor Destroy; override;
+  // Properties
+    property Interval: Cardinal read FInterval write SetInterval;
+    property StopHandle: THandle read FStopHandle;
+  end;
+
+
+//==============================================================================
+// TabfFolderMonitorThread
+//==============================================================================
+// Tread class for folder monitoring.
+
+  TabfFolderMonitorThread = class(TabfThread)
+  private
+    FMutex, FWaitHandle: THandle;
+    FDirectory: string;
+    FWatchSubTree: Boolean;
+    FWaitChanged : Boolean;
+    FNotifyOptionFlags: DWORD;
+    FChangeEvent: TThreadMethod;
+  protected
+    procedure Execute; override;
+  public
+    constructor Create(ChangeEvent: TThreadMethod); virtual;
+    destructor Destroy; override;
+    procedure SetDirectoryOptions(ADir: string; AWatchSubTree: Boolean;
+      ANotifyOptionFlags: DWORD);
+  // Properties
+    property Mutex: THandle read FMutex;
+    property Terminated;
+    property WaitHandle: THandle read FWaitHandle;
+    property ChangeEvent: TThreadMethod read FChangeEvent write FChangeEvent;
+  end;
+
+
+//==============================================================================
+// TabfRegistryMonitorThread
+//==============================================================================
+// Tread class for registry monitoring.
+
+  TabfRegistryMonitorThread = class(TabfThread)
+  private
+    FMutex, FWaitHandle, FWaitRootHandle: THandle;
+    FRegistryKey: string;
+    FRootKey: HKEY;
+    FKey: HKEY;
+    FKeyExists: Boolean;
+    FWatchSubTree: Boolean;
+    FWaitChanged : Boolean;
+    FNotifyOptionFlags: DWORD;
+    FChangeEvent: TThreadMethod;
+  protected
+    procedure Execute; override;
+  public
+    constructor Create(ChangeEvent: TThreadMethod); virtual;
+    destructor Destroy; override;
+    procedure SetRegistryKeyOptions(ARootKey: HKEY; AKey: string;
+      AWatchSubTree: Boolean; ANotifyOptionFlags: DWORD);
+  // Properties
+    property Mutex: THandle read FMutex;
+    property Terminated;
+    property WaitHandle: THandle read FWaitHandle;
+    property ChangeEvent: TThreadMethod read FChangeEvent write FChangeEvent;
+  end;
+
+
+//==============================================================================
+// TabfCustomCopyThread
+//==============================================================================
+// Prototype of threads that provides a "Copy" operation asynchronously to the
+// main VCL thread. SrcName specifies a source name of copying file/data.
+// DstName specifies a destination name of copying file/data. You should
+// implement Copy and CalcTotalSize methods in descendants. Copy method provides
+// a main copying routine. CalcTotalSize is used to determine a TotalSize of the
+// copying data. Use DoProgress or FireProgressEvent periodically in the Copy
+// method. Setting of the Error property to value different then 0, terminates
+// the thread and sets the ErrorMessage property. Use ErrorMessage to get a
+// readable information about the error.
+
+  TabfCopyThreadErrorEvent = procedure(Sender: TObject; ErrorCode: LongWord;
+    const ErrorMessage: string) of object;
+
+  TabfCopyThreadProgressEvent = procedure(Sender: TObject; CopiedSize,
+    TotalSize: LongWord; var Terminate: Boolean) of object;
+
+  TabfCustomCopyThread = class(TabfThread)
+  private
+    FErrorCode: LongWord;
+    FOnError: TabfCopyThreadErrorEvent;
+    FOnProgress: TabfCopyThreadProgressEvent;
+  protected
+    FSrcName: string;
+    FDstName: string;
+    FCopiedSize: LongWord;
+    FTotalSize: LongWord;
+    FExtraData: Pointer;
+  // Main routines
+    procedure CalcTotalSize; virtual; abstract; // Should set FTotalSize value.
+    procedure Copy; virtual; abstract; // Main routine, override this.
+  // Event Handlers
+    procedure FireErrorEvent; virtual;
+    procedure DoError(ErrorCode: LongWord; const ErrorMessage: string); dynamic;
+    procedure FireProgressEvent; virtual;
+    procedure DoProgress(CopiedSize, TotalSize: LongWord); dynamic;
+  // Properties Get/Set
+    procedure SetSrcName(const A: string); virtual;
+    procedure SetDstName(const A: string); virtual;
+    procedure SetErrorCode(A: LongWord); virtual;
+    function GetErrorMessage: string; virtual;
+  // Properties
+    property ErrorCode: LongWord read FErrorCode write SetErrorCode;
+    property ErrorMessage: string read GetErrorMessage;
+  // Events
+    property OnError: TabfCopyThreadErrorEvent read FOnError write FOnError;
+    property OnProgress: TabfCopyThreadProgressEvent read FOnProgress
+      write FOnProgress;
+  public
+    constructor Create(const ASrcName, ADstName: string; CreateSuspended,
+      AFreeOnTerminate: Boolean; AOnError: TabfCopyThreadErrorEvent;
+      AOnProgress: TabfCopyThreadProgressEvent; AOnFinish: TNotifyEvent;
+      const ExtraData: Pointer); virtual;
+  // Main routines
+    procedure Execute; override; // Override the Copy method, not Execute.
+    procedure Cancel; virtual;
+  // Properties
+    property DstName: string read FDstName write SetDstName;
+    property SrcName: string read FSrcName write SetSrcName;
+    property TotalSize: LongWord read FTotalSize;
+    property CopiedSize: LongWord read FCopiedSize;
+    property Terminated;
+  end;{TabfCustomCopyThread = class(TThread)}
+
+  TabfCopyThreadClass = class of TabfCustomCopyThread;
+
+//==============================================================================
+// TabfLocalCopyThread
+//==============================================================================
+// Provides asynchronous local file copying.
+
+  TabfLocalCopyThread = class(TabfCustomCopyThread)
+  protected
+    procedure CalcTotalSize; override;
+    procedure Copy; override;
+  public
+  // Properties
+    property DstName;
+    property SrcName;
+    property TotalSize;
+    property CopiedSize;
+    property ErrorCode;
+    property ErrorMessage;
+  // Events
+    property OnError;
+    property OnProgress;
+  end;
+
+
+//==============================================================================
+// Auxiliary consts
+//==============================================================================
+
+const
+  CabfDelphiRegPaths: array[TabfDelphiVer] of string = (
+    SabfRegSoftwareBorland + SabfDelphi  + '\2.0',
+    SabfRegSoftwareBorland + SabfBuilder + '\1.0',
+    SabfRegSoftwareBorland + SabfDelphi  + '\3.0',
+    SabfRegSoftwareBorland + SabfBuilder + '\3.0',
+    SabfRegSoftwareBorland + SabfDelphi  + '\4.0',
+    SabfRegSoftwareBorland + SabfBuilder + '\4.0',
+    SabfRegSoftwareBorland + SabfDelphi  + '\5.0',
+    SabfRegSoftwareBorland + SabfBuilder + '\5.0',
+    SabfRegSoftwareBorland + SabfDelphi  + '\6.0',
+    SabfRegSoftwareBorland + SabfBuilder + '\6.0',
+    SabfRegSoftwareBorland + SabfDelphi  + '\7.0',
+    SabfRegSoftwareBorland + SabfBDS     + '\1.0',
+    SabfRegSoftwareBorland + SabfBDS     + '\3.0'
+  );
+
+  CabfCallbackThunk: TabfCallbackThunk = (
+    POPEDX:    $5A;
+    MOVEAX:    $B8;
+    SelfPtr:   nil;        // Pointer to Self
+    PUSHEAX:   $50;
+    PUSHEDX:   $52;
+    JMP:       $E9;
+    JmpOffset: $00000000); // Offset to callback method
+
+
+//==============================================================================
+// Compare and search
+//==============================================================================
+
+{$IfNDef D3}
+function SameText(const S1, S2: string): Boolean; assembler;
+function IdentToInt(const Ident: string; var Int: Longint;
+  const Map: array of TIdentMapEntry): Boolean;
+function IntToIdent(Int: Longint; var Ident: string;
+  const Map: array of TIdentMapEntry): Boolean;
+{$EndIf D3}
+
+
+{******************************************************************************}
+implementation

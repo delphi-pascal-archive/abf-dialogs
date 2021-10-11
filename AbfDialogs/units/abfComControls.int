@@ -1,0 +1,489 @@
+{*******************************************************************************
+
+  ABF Visual Components Library
+
+  Copyright (c) 2000-2005 ABF software, Inc.
+  All Rights Reserved.
+
+  e-mail: info@abf-dev.com
+  web:    http://www.abf-dev.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+  RESTRICTIONS
+
+  THE SOURCE CODE CONTAINED WITHIN THIS FILE AND ALL RELATED FILES OR ANY
+PORTION OF ITS CONTENTS SHALL AT NO TIME BE COPIED, TRANSFERRED, SOLD,
+DISTRIBUTED, OR OTHERWISE MADE AVAILABLE TO OTHER INDIVIDUALS WITHOUT EXPRESS
+WRITTEN CONSENT AND PERMISSION FROM THE ABF SOFTWARE, INC.
+
+  CONSULT THE END USER LICENSE AGREEMENT (EULA) FOR INFORMATION ON ADDITIONAL
+RESTRICTIONS.
+
+*******************************************************************************}
+unit abfComControls;
+
+{$I abf.inc}
+
+interface
+
+uses
+{$IfDef D7}
+  Themes,
+{$EndIf D7}
+  Windows, Messages, Classes, Controls,  SysUtils, Graphics, Forms, StdCtrls,
+  ExtCtrls, ComCtrls, CommCtrl,
+// ABF VCL  
+  abfPropertyDesc;
+
+type
+
+//==============================================================================
+// TabfCustomRichEdit
+//==============================================================================
+// Prototype of enhanced RichEdit
+
+  TabfCustomRichEdit = class(TCustomRichEdit)
+  private
+    FAbout: string;
+    FMargins: TabfMarginsDesc;
+  // Properties Get/Set
+    procedure SetMargins(const Value: TabfMarginsDesc);
+  protected
+    property About: string read FAbout write FAbout stored False;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure Print(const Caption: string);{$IfDef D4}override;{$EndIf D4}
+    procedure ReplaceSelectedText(const NewText: string); virtual;
+    function ReplaceText(const OldText, NewText : string;
+      StartPos, SearchLength: Integer; Options: TSearchTypes;
+      AllOccured: Boolean): Integer; virtual;
+    procedure LoadFromFile(const FileName: string;
+      APlainText: Boolean); virtual;
+    procedure SaveToFile(const FileName: string; APlainText: Boolean); virtual;
+  // Properties
+    property Margins: TabfMarginsDesc read FMargins write SetMargins;
+  end;
+
+
+//==============================================================================
+// TabfRichEdit
+//==============================================================================
+// Enhanced RichEdit
+
+  TabfRichEdit = class(TabfCustomRichEdit)
+  published
+    property About;
+    property Align;
+    property Alignment;
+    property BorderStyle;
+    property Color;
+    property Ctl3D;
+    property DragCursor;
+    property DragMode;
+    property Enabled;
+    property Font;
+    property HideSelection;
+    property HideScrollBars;
+    property Lines;
+    property MaxLength;
+    property Margins;
+    property ParentColor;
+    property ParentCtl3D;
+    property ParentFont;
+    property ParentShowHint;
+    property PlainText;
+    property PopupMenu;
+    property ReadOnly;
+    property ScrollBars;
+    property ShowHint;
+    property TabOrder;
+    property TabStop default True;
+    property Visible;
+    property WantTabs;
+    property WantReturns;
+    property WordWrap;
+{$IfDef D3}
+    property ImeMode;
+    property ImeName;
+{$EndIf D3}
+{$IfDef D4}
+    property Anchors;
+    property BiDiMode;
+    property BorderWidth;
+    property DragKind;
+    property Constraints;
+    property ParentBiDiMode;
+{$EndIf D4}
+    property OnChange;
+    property OnDragDrop;
+    property OnDragOver;
+    property OnEndDrag;
+    property OnEnter;
+    property OnExit;
+    property OnKeyDown;
+    property OnKeyPress;
+    property OnKeyUp;
+    property OnMouseDown;
+    property OnMouseMove;
+    property OnMouseUp;
+    property OnProtectChange;
+    property OnResizeRequest;
+    property OnSaveClipboard;
+    property OnSelectionChange;
+    property OnStartDrag;
+{$IfDef D4}
+    property OnEndDock;
+    property OnMouseWheel;
+    property OnMouseWheelDown;
+    property OnMouseWheelUp;
+    property OnStartDock;
+{$EndIf D4}
+{$IfDef D5}
+    property OnContextPopup;
+{$EndIf D5}
+  end;
+
+
+//==============================================================================
+// TabfCustomListView
+//==============================================================================
+// Prototype of listview with sort feature and triangle sort mark.
+
+  TabfListViewSortDirection = (sdAscending, sdDescending);
+  TabfListViewCompareItems = function(Str1, Str2: string): Integer;
+
+  TabfCustomListView = class(TCustomListView)
+  private
+    FAbout: string;
+    FSortColumn: Word;
+    FSortDirection: TabfListViewSortDirection;
+    FHeadLBDown, FHeadOnDiv: Boolean;
+    FHeadLBCol: Integer;
+    FShowSortMark: Boolean;
+  // Properties Get/Set
+    procedure SetSortColumn(Value: Word);
+    procedure SetSortDirection(Value: TabfListViewSortDirection);
+    procedure SetShowSortMark(Value: Boolean);
+    function  GetSortType: TSortType;
+    procedure SetSortType(Value: TSortType);
+  // Messages
+    procedure CMSysColorChange(var Message: TMessage); message CM_SYSCOLORCHANGE;
+    procedure WMWindowPosChanged(var Message: TWMWindowPosChanged); message WM_WINDOWPOSCHANGED;
+    procedure WMParentNotify(var Message: TWMParentNotify); message WM_PARENTNOTIFY;
+  protected
+    FHeaderHandle: THandle;
+    FNewWndProc, FPrevWndProc, FNewHeaderProc, FPrevHeaderProc: Pointer;
+    procedure CreateWnd; override;
+    procedure ColClick(Column: TListColumn); override;
+    procedure DrawSortMark; virtual;
+  // Hook routines
+    procedure HookControl; virtual;
+    procedure UnhookControl; virtual;
+    procedure HookWndProc(var AMsg: TMessage); virtual;
+    procedure HookHeader(Wnd: THandle); virtual;
+    procedure UnhookHeader; virtual;
+    procedure HeaderWndProc(var AMsg: TMessage); virtual;
+  // Properties
+    property About: string read FAbout write FAbout stored False;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    function CustomSort(SortProc: TLVCompare; Data: LongInt): Boolean; virtual;
+    procedure RepaintHeader; virtual;
+    procedure DoAutoSizeEx(AVertScroll: Boolean); virtual;
+    procedure DoAutoSize; virtual;
+  // Properties
+    property ViewStyle default vsReport;
+    property SortColumn: Word read FSortColumn write SetSortColumn;
+    property SortDirection: TabfListViewSortDirection read FSortDirection
+      write SetSortDirection default sdAscending;
+    property ShowSortMark: Boolean read FShowSortMark
+      write SetShowSortMark default True;
+    property SortType: TSortType read GetSortType write SetSortType;
+  end;{TabfCustomListView = class(TCustomListView)}
+
+
+//==============================================================================
+// TabfListView
+//==============================================================================
+// TabfListView is an enhanced ListView with sorting feature and triangle sort
+// mark (a-la Outlook) in the header for report style. A ComCtrl color bug
+// (when the color scheme of the system is changed) is fixed. Custom sorting is
+// supported.
+
+  TabfListView = class(TabfCustomListView)
+  published
+  // Properties
+  // From TCustomListView
+    property Align;
+    property AllocBy;
+    property BorderStyle;
+    property Color;
+    property Columns;
+    property ColumnClick;
+    property Ctl3D;
+    property DragCursor;
+    property Enabled;
+    property Font;
+    property HideSelection;
+    property IconOptions;
+    property Items;
+    property LargeImages;
+    property MultiSelect;
+    property ReadOnly default False;
+    property ParentColor default False;
+    property ParentFont;
+    property ParentShowHint;
+    property PopupMenu;
+    property ShowColumnHeaders;
+    property ShowHint;
+    property SmallImages;
+    property StateImages;
+    property TabOrder;
+    property TabStop default True;
+    property ViewStyle;
+    property Visible;
+  // From TabfCustomListView
+    property About;
+    property SortDirection;
+    property ShowSortMark;
+    property SortType;
+{$IfDef D3}
+    property Checkboxes;
+    property DragMode;
+    property GridLines;
+    property HotTrack;
+    property RowSelect;
+{$EndIf D3}
+{$IfDef D4}
+    property Anchors;
+    property BiDiMode;
+    property BorderWidth;
+    property Constraints;
+    property DragKind;
+    property FlatScrollBars;
+    property FullDrag;
+    property HotTrackStyles;
+    property OwnerData;
+    property OwnerDraw;
+    property ParentBiDiMode;
+{$EndIf D4}
+{$IfDef D5}
+    property HoverTime;
+    property ShowWorkAreas;
+{$EndIf D5}
+    property SortColumn; // Should be stored last
+  // Events
+    property OnChange;
+    property OnChanging;
+    property OnClick;
+    property OnColumnClick;
+    property OnCompare;
+    property OnDblClick;
+    property OnDeletion;
+    property OnEdited;
+    property OnEditing;
+    property OnEndDrag;
+    property OnEnter;
+    property OnExit;
+    property OnDragDrop;
+    property OnDragOver;
+    property OnInsert;
+    property OnKeyDown;
+    property OnKeyPress;
+    property OnKeyUp;
+    property OnMouseDown;
+    property OnMouseMove;
+    property OnMouseUp;
+    property OnStartDrag;
+{$IfDef D4}
+    property OnCustomDraw;
+    property OnCustomDrawItem;
+    property OnCustomDrawSubItem;
+    property OnData;
+    property OnDataFind;
+    property OnDataHint;
+    property OnDataStateChange;
+    property OnDrawItem;
+    property OnEndDock;
+    property OnGetImageIndex;
+    property OnResize;
+    property OnSelectItem;
+    property OnStartDock;
+{$EndIf D4}
+{$IfDef D5}
+    property OnAdvancedCustomDraw;
+    property OnAdvancedCustomDrawItem;
+    property OnAdvancedCustomDrawSubItem;
+    property OnColumnDragged;
+    property OnColumnRightClick;
+    property OnContextPopup;
+    property OnGetSubItemImage;
+    property OnInfoTip;
+{$EndIf D5}
+  end;{TabfListView = class(TCustomListView)}
+
+
+//==============================================================================
+// TabfProgressBar
+//==============================================================================
+// TabfProgressBar is an enhanced progress bar. Allows specify background and
+// bar colors. Can be horizontal or vertical.
+
+{$IfNDef D4}
+  TProgressBarOrientation = (pbHorizontal, pbVertical);
+{$EndIf D4}
+
+  TabfProgressBar = class(TProgressBar)
+  private
+    FAbout: string;
+    FColor: TColor;
+    FBarColor: TColor;
+    FPosition: Integer;
+{$IfNDef D4}
+    FOrientation: TProgressBarOrientation;
+    FSmooth: Boolean;
+{$EndIf D4}
+  // Properties Get/Set
+    procedure SetBarColor(Value: TColor);
+    procedure SetColor(Value: TColor);
+    function  GetOrientation: TProgressBarOrientation;
+    procedure SetOrientation(Value: TProgressBarOrientation);
+    function  GetPosition: Integer;
+    procedure SetPosition(Value: Integer);
+{$IfNDef D4}
+    procedure SetSmooth(Value: Boolean);
+{$EndIf D4}
+  // Messages routines
+    procedure WMEraseBkGnd(var Message: TWMEraseBkGnd); message WM_ERASEBKGND;
+    procedure CMSysColorChange(var Message: TMessage); message CM_SYSCOLORCHANGE;
+  protected
+    procedure CreateWnd; override;
+    procedure DestroyWnd; override;
+    procedure Loaded; override;
+{$IfNDef D4}
+    procedure CreateParams(var Params: TCreateParams); override;
+{$EndIf D4}
+  public
+    constructor Create(AOwner: TComponent); override;
+  published
+  // Properties
+    property About: string read FAbout write FAbout stored False;
+    property BarColor: TColor read FBarColor write SetBarColor
+      default clHighlight;
+    property Color: TColor read FColor  write SetColor default clBtnFace;
+    property Orientation: TProgressBarOrientation read GetOrientation
+      write SetOrientation default pbHorizontal;
+    property Position: Integer read GetPosition write SetPosition default 0;
+{$IfNDef D4}
+    property Smooth: Boolean read FSmooth write SetSmooth default False;
+{$EndIf D4}
+  // Events
+    property OnClick;
+    property OnDblClick;
+  end;{TabfProgressBar = class(TProgressBar)}
+
+
+//==============================================================================
+// TabfTrackBar
+//==============================================================================
+// Enhanced track bar. Allows hide a SelRange
+
+  TabfTrackBar = class(TTrackBar)
+  private
+    FAbout: string;
+    FSelRange: Boolean;
+{$IfNDef D4}
+    FSliderVisible: Boolean;
+    procedure SetSliderVisible(Value: Boolean);
+{$EndIf D4}
+    procedure SetSelRange(Value: Boolean);
+  // Messages routines
+    procedure CMSysColorChange(var Message: TMessage); message CM_SYSCOLORCHANGE;
+  protected
+    procedure CreateParams(var Params: TCreateParams); override;
+  public
+    constructor Create(AOwner: TComponent); override;
+  published
+  // Properties
+    property About: string read FAbout write FAbout stored False;
+    property SelRange: Boolean read FSelRange
+      write SetSelRange default False;
+{$IfNDef D4}
+    property SliderVisible: Boolean read FSliderVisible write
+      SetSliderVisible default True;
+{$EndIf D4}
+    property OnMouseMove;
+    property OnMouseDown;
+    property OnMouseUp;
+  end;
+
+
+//==============================================================================
+// Global function pointers
+//==============================================================================
+// Use this variables to assign own procedures for sorting and comparing.
+
+var
+  abfListViewSortProc: TLVCompare;
+  abfListViewCompareItemsProc: TabfListViewCompareItems;
+
+
+//==============================================================================
+// For old versions of Delphi and C++ Builder
+//==============================================================================
+
+{$IfNDef D3}
+const
+  PBM_SETRANGE            = WM_USER + 1;
+  PBM_SETPOS              = WM_USER + 2;
+  PBM_DELTAPOS            = WM_USER + 3;
+  PBM_SETSTEP             = WM_USER + 4;
+  PBM_STEPIT              = WM_USER + 5;
+  PBM_SETRANGE32          = WM_USER + 6;  // lParam = high, wParam = low
+  PBM_GETRANGE            = WM_USER + 7;  // lParam = PPBRange or Nil
+                                				  // wParam = False: Result = high
+                              					  // wParam = True: Result = low
+  PBM_GETPOS              = WM_USER + 8;
+
+type
+  PPBRange = ^TPBRange;
+  TPBRange = record
+    iLow:  integer;
+    iHigh: integer;
+  end;
+
+{$EndIf D3}
+{$IfNDef C3}
+
+const
+  HDM_GETITEMRECT         = HDM_FIRST + 7;
+  HDM_GETORDERARRAY       = HDM_FIRST + 17;
+  HDM_SETORDERARRAY       = HDM_FIRST + 18;
+
+  CCM_FIRST               = $2000;      { Common control shared messages }
+  CCM_SETBKCOLOR          = CCM_FIRST + 1; // lParam is bkColor
+
+  PBS_SMOOTH              = $01;
+  PBS_VERTICAL            = $04;
+
+  PBM_SETBARCOLOR         = WM_USER + 9;     // lParam = bar color
+  PBM_SETBKCOLOR          = CCM_SETBKCOLOR;  // lParam = bkColor
+  LVM_GETHEADER           = LVM_FIRST + 31;
+
+
+function Header_GetItemRect(hwnd: HWND; iItem: Integer; lprc: PRect): Integer;
+function Header_GetOrderArray(hwnd: HWND; iCount: Integer; lpi: PInteger): Integer;
+function Header_SetOrderArray(hwnd: HWND; iCount: Integer; lpi: PInteger): Integer;
+function ListView_GetHeader(hwnd: HWND): HWND;
+
+{$EndIf C3}
+
+{******************************************************************************}
+implementation

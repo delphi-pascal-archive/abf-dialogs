@@ -1,0 +1,174 @@
+{*******************************************************************************
+
+  ABF Visual Components Library, Design-time part
+
+  Copyright (c) 2000-2005 ABF software, Inc.
+  All Rights Reserved.
+
+  e-mail: info@abf-dev.com
+  web:    http://www.abf-dev.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+  RESTRICTIONS
+
+  THE SOURCE CODE CONTAINED WITHIN THIS FILE AND ALL RELATED FILES OR ANY
+PORTION OF ITS CONTENTS SHALL AT NO TIME BE COPIED, TRANSFERRED, SOLD,
+DISTRIBUTED, OR OTHERWISE MADE AVAILABLE TO OTHER INDIVIDUALS WITHOUT EXPRESS
+WRITTEN CONSENT AND PERMISSION FROM THE ABF SOFTWARE, INC.
+
+  CONSULT THE END USER LICENSE AGREEMENT (EULA) FOR INFORMATION ON ADDITIONAL
+RESTRICTIONS.
+
+*******************************************************************************}
+unit abfDesignerWAB;
+
+{$I abf.inc}
+
+interface
+
+uses
+{$IFDEF D4}
+  ImgList,
+{$ENDIF D4}
+{$IfDef D6}
+  DesignIntf, DesignEditors, DesignWindows,
+{$Else D6}
+  DsgnIntf, DsgnWnds,
+{$EndIf D6}
+  Windows, SysUtils, Controls, ComCtrls, ToolWin, ExtCtrls, Classes, Forms,
+  Dialogs, Messages, Menus, abfWAB, WABDefs;
+
+const
+  AM_DeferUpdate = WM_USER + 100;  // avoids break-before-make listview ugliness
+
+type
+{$IFNDEF D4}
+  IPersistent = TComponent;
+  IDesigner = TDesigner;
+  IFormDesigner = TFormDesigner;
+{$ENDIF D4}
+{$IFNDEF D5}
+  TDesignerSelectionList = TComponentList;
+{$ENDIF D5}
+
+//==============================================================================
+// TabfWABItemsEditor
+//==============================================================================
+
+  TabfWABItemsEditor = class(TDesignWindow)
+    sbMain: TStatusBar;
+    plBorder: TPanel;
+    lvItems: TListView;
+    tbrToolbar: TToolBar;
+    tbtnNew: TToolButton;
+    tbtnProp: TToolButton;
+    ilstNormalImages: TImageList;
+    ilstHotImages: TImageList;
+    tbtnDelete: TToolButton;
+    imlstIcons: TImageList;
+    ilstDisableImages: TImageList;
+    pmMain: TPopupMenu;
+    miNew: TMenuItem;
+    miProp: TMenuItem;
+    miDelete: TMenuItem;
+    N1: TMenuItem;
+    miSelectAll: TMenuItem;
+    miRefresh: TMenuItem;
+    pmNew: TPopupMenu;
+    miNewContact: TMenuItem;
+    miNewGroup: TMenuItem;
+    miNewContact2: TMenuItem;
+    miNewGroup2: TMenuItem;
+    procedure FormShow(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure tbtnPropClick(Sender: TObject);
+    procedure tbtnDeleteClick(Sender: TObject);
+    procedure miNewContactClick(Sender: TObject);
+    procedure miNewGroupClick(Sender: TObject);
+    procedure tbtnNewClick(Sender: TObject);
+    procedure miSelectAllClick(Sender: TObject);
+    procedure miRefreshClick(Sender: TObject);
+    procedure pmMainPopup(Sender: TObject);
+    procedure lvItemsDblClick(Sender: TObject);
+    procedure lvItemsChange(Sender: TObject; Item: TListItem;
+      Change: TItemChange);
+    procedure Activated; override;
+    procedure LockState;
+    procedure UnlockState;
+    function UniqueName(Component: TComponent): string; override;
+  private
+    FCollection: TCollection;
+    FCollectionPropertyName: string;
+    FEventFired: Boolean;
+    FExternalCount: Integer;
+    FItemIDList: TList;
+    FSelectionError: Boolean;
+    FStateLock: Integer;
+    FWAB: TabfWAB;
+    procedure AMDeferUpdate(var Msg: TMessage); message AM_DeferUpdate;
+    procedure DoExternalEvent;
+    procedure ExternalEvent(Sender: TObject);
+    procedure LockExternalEvent;
+    procedure UnlockExternalEvent;
+    procedure RefreshListView(SelectIndex: Integer);
+    procedure ClearSelection;
+//    procedure GetSelection;
+    procedure SetSelection;
+    function GetWABItemIndex(PSB: PSBinary;
+      var ItemType: Integer; var ItemIdx: Integer): Integer;
+    procedure RefreshButtonsState;
+    procedure SetCollectionPropertyName(const Value: string);
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+{$IFDEF D6}
+    procedure ItemDeleted(const ADesigner: IDesigner;
+      AItem: TPersistent); override;
+    procedure DesignerClosed(const ADesigner: IDesigner;
+      AGoingDormant: Boolean); override;
+    procedure ItemsModified(const ADesigner: IDesigner); override;
+    procedure SelectionChanged(const ADesigner: IDesigner;
+      const ASelection: IDesignerSelections); override;
+{$ELSE D6}
+    procedure ComponentDeleted(Component: IPersistent); override;
+    procedure FormClosed(AForm: TCustomForm); override;
+    procedure FormModified; override;
+    procedure SelectionChanged(ASelection: TDesignerSelectionList); override;
+{$ENDIF D6}
+    property CollectionPropertyName: string read FCollectionPropertyName
+      write SetCollectionPropertyName;
+  end;
+
+//==============================================================================
+// TabfWABContactsPropertyEditor
+//==============================================================================
+
+  TabfWABItemsEditorClass = class of TabfWABItemsEditor;
+
+  TabfWABItemsPropertyEditor = class(TClassProperty)
+  public
+    procedure Edit; override;
+    function GetAttributes: TPropertyAttributes; override;
+  end;
+
+{******************************************************************************}
+{ ContactsEditorsList }
+
+var
+  ItemsEditorsList: TList = nil;
+
+{******************************************************************************}
+{ Designing subroutines }
+
+procedure ShowAbfWABItemsEditor(ADesigner: IDesigner; AWAB: TabfWAB;
+  ACollection: TCollection; const PropertyName: string);
+function ShowAbfWABItemsEditorClass(ADesigner: IDesigner;
+  AWAB: TabfWAB; ACollection: TCollection;
+  const PropertyName: string): TabfWABItemsEditor;
+{******************************************************************************}
+implementation

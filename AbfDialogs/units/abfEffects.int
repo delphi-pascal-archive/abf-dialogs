@@ -1,0 +1,1014 @@
+{*******************************************************************************
+
+  ABF Visual Components Library
+
+  Copyright (c) 2000-2005 ABF software, Inc.
+  All Rights Reserved.
+
+  e-mail: info@abf-dev.com
+  web:    http://www.abf-dev.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+  RESTRICTIONS
+
+  THE SOURCE CODE CONTAINED WITHIN THIS FILE AND ALL RELATED FILES OR ANY
+PORTION OF ITS CONTENTS SHALL AT NO TIME BE COPIED, TRANSFERRED, SOLD,
+DISTRIBUTED, OR OTHERWISE MADE AVAILABLE TO OTHER INDIVIDUALS WITHOUT EXPRESS
+WRITTEN CONSENT AND PERMISSION FROM THE ABF SOFTWARE, INC.
+
+  CONSULT THE END USER LICENSE AGREEMENT (EULA) FOR INFORMATION ON ADDITIONAL
+RESTRICTIONS.
+
+*******************************************************************************}
+unit abfEffects;
+
+{$I abf.inc}
+{$Define UseThreadTimer}
+
+interface
+
+uses
+{$IfDef D4}
+  ActnList, ImgList,
+{$EndIf D4}
+  Windows, Messages, SysUtils, Classes, Controls, Graphics, Menus, ExtCtrls,
+  Forms, abfConsts, abfClasses, abfSysUtils, abfVclUtils, abfGraphics,
+  abfComponents, abfControls;
+
+type
+
+  TabfFormEffect = class;
+  TabfCustomCredits = class;
+  EabfCredits = class(Exception);
+  EabfFormEffect = class(Exception);
+
+//==============================================================================
+// GraphicFill routines
+//==============================================================================
+
+//------------------------------------------------------------------------------
+// GraphicFill render procedure type. GraphicFill renders should fill the Rect
+// area on the Canvas with specified Colors. Use UserData to send customized
+// data to the GraphicFill render procedure .
+
+  TabfGraphicFillProc = procedure(const Canvas: TCanvas; const Rect: TRect;
+    ColorNormal, ColorLight, ColorDark: TColor; UserData: Pointer);
+
+//------------------------------------------------------------------------------
+// TabfGraphicFill class used as a description of registerd GraphicFill routines
+// in the abfGraphicFillList.
+
+  TabfGraphicFill = class
+  public
+    Name: string;
+    Proc: TabfGraphicFillProc;
+    SizeDepended: Boolean;
+    NeedBitmap: Boolean;
+  end;
+
+
+//==============================================================================
+// TabfFormEffectRolling
+//==============================================================================
+// Class for the Rolling property of the TabfFormEffect component.
+
+  TabfFormEffectRollingDelay = 1..10;
+
+  TabfFormEffectRolling = class(TPersistent)
+  private
+    FOnMinMax: Boolean;
+    FAnimate: Boolean;
+    FHeight: Integer;
+    FDelay: TabfFormEffectRollingDelay;
+    procedure SetHeight(A: Integer);
+  protected
+    FOwner: TabfFormEffect;
+    function GetOwner: TPersistent; override;
+  public
+    constructor Create(AOwner: TabfFormEffect); virtual;
+    property Owner: TabfFormEffect read FOwner;
+  published
+    property Animate: Boolean read FAnimate write FAnimate default True;
+    property Height: Integer read FHeight write SetHeight default 0;
+    property OnMinMax: Boolean read FOnMinMax write FOnMinMax default True;
+    property Delay: TabfFormEffectRollingDelay read FDelay write FDelay
+      default 3;
+  end;
+
+
+//==============================================================================
+// TabfFormEffectShaking
+//==============================================================================
+// Class for the Shaking property of the TabfFormEffect component.
+
+  TabfFormEffectShaking = class(TPersistent)
+  private
+    FAmplitude: Cardinal;
+    FInterval: Cardinal;
+    FTime: Cardinal;
+    procedure SetInterval(A: Cardinal);
+    procedure SetTime(A: Cardinal);
+  protected
+    FOwner: TabfFormEffect;
+    function GetOwner: TPersistent; override;
+  public
+    constructor Create(AOwner: TabfFormEffect); virtual;
+    property Owner: TabfFormEffect read FOwner;
+  published
+    property Amplitude: Cardinal read FAmplitude write FAmplitude default 10;
+    property Interval: Cardinal read FInterval write SetInterval default 25;
+    property Time: Cardinal read FTime write SetTime default 500;
+  end;
+
+  
+//==============================================================================
+// TabfFormEffectAlphaBlending
+//==============================================================================
+// Class realizes AlphaBlending effect.
+
+  TabfAlphaBlendingEffect = (abeFade, abeAppear);
+
+  TabfFormEffectAlphaBlending = class(TPersistent)
+  private
+    FBeginTime: Cardinal;
+    FCycled: Boolean;
+    FInvertOnCycle: Boolean;
+    FEffect: TabfAlphaBlendingEffect;
+    FTime: Cardinal;
+    FAlpha: Byte;
+{$IfDef D6}
+    FSaveAlpha: Byte;
+    FSaveBlend: Boolean;
+{$EndIf D6}
+    FMinBlend: Byte;
+    FMaxBlend: Byte;
+    FAsync: Boolean;
+    FOnBegin: TNotifyEvent;
+    FOnEnd: TNotifyEvent;
+  // Properties Get/Set
+    procedure SetAlpha(Value: Byte);
+    procedure SetEffect(Value: TabfAlphaBlendingEffect);
+    procedure SetTime(Value: Cardinal);
+  protected
+    FOwner: TabfFormEffect;
+    FThread: TabfThreadComponent;
+    FExecuting: Boolean;
+    FTerminated: Boolean;
+    function GetOwner: TPersistent; override;
+    procedure OnExecute(Sender: TObject);
+  public
+    constructor Create(AOwner: TabfFormEffect); virtual;
+    destructor Destroy; override;
+    procedure Execute;
+    procedure Terminate;
+  // Properties
+    property Owner: TabfFormEffect read FOwner;
+  // Events
+    property OnBegin: TNotifyEvent read FOnBegin write FOnBegin;
+    property OnEnd: TNotifyEvent read FOnEnd write FOnEnd;
+  published
+  // Properties
+    property Async: Boolean read FAsync write FAsync default True;
+    property Alpha: Byte read FAlpha write SetAlpha default 255;
+    property Cycled: Boolean read FCycled write FCycled default False;
+    property InvertOnCycle: Boolean read FInvertOnCycle write FInvertOnCycle
+      default True;
+    property MinAlpha: Byte read FMinBlend write FMinBlend default 100;
+    property MaxAlpha: Byte read FMaxBlend write FMaxBlend default 255;
+    property Effect: TabfAlphaBlendingEffect read FEffect write SetEffect
+      default abeFade;
+    property Time: Cardinal read FTime write SetTime default 1000;
+  end;
+
+
+//==============================================================================
+// TabfFormEffect
+//==============================================================================
+// Use TabfFormEffect component or its descendants to hook a WndProc of the
+// form where the component is placed. Provides additional features as AutoDrag,
+// Rolling and Shaking effect. Rolling can be manual or Minimize/Maximize
+// depended.
+
+  TabfFormEffect = class(TabfCustomWndProcHook)
+  private
+    FOnRolling: TNotifyEvent;
+    FOnUnRolling: TNotifyEvent;
+    FOnShakingEnd: TNotifyEvent;
+    FOnShakingBegin: TNotifyEvent;
+    function GetOnAlphaBlendingBegin: TNotifyEvent;
+    procedure SetOnAlphaBlendingBegin(const Value: TNotifyEvent);
+    function GetOnAlphaBlendingEnd: TNotifyEvent;
+    procedure SetOnAlphaBlendingEnd(const Value: TNotifyEvent);
+  protected
+    FOldHeight: Integer;
+    FOldPos: TPoint;
+    FAlphaBlending: TabfFormEffectAlphaBlending;
+    FRolled: Boolean;
+    FRolling: TabfFormEffectRolling;
+    FShaked: Boolean;
+    FShaking: TabfFormEffectShaking;
+  // Hook routines
+    procedure WndProc(var Message: TMessage); override;
+  // Event handlers
+    procedure DoRolling; dynamic;
+    procedure DoUnRolling; dynamic;
+    procedure DoShakingBegin; dynamic;
+    procedure DoShakingEnd; dynamic;
+  // Peoperties Get/Set
+    procedure SetAlphaBlending(const Value: TabfFormEffectAlphaBlending);
+    procedure SetRolled(Value: Boolean);
+    procedure SetRolling(const Value: TabfFormEffectRolling);
+    procedure SetShaked(Value: Boolean);
+    procedure SetShaking(const Value: TabfFormEffectShaking);
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure ResetRolling; virtual;
+    procedure ResetShaking; virtual;
+    procedure AlphaBlendExecute; virtual;
+    procedure AlphaBlendTerminate; virtual;
+    procedure Roll(Up: Boolean); virtual;
+    procedure Shake; virtual;
+  // Properties
+    property Rolled: Boolean read FRolled write SetRolled;
+    property Shaked: Boolean read FShaked write SetShaked;
+  published
+  // Properties
+    property About;
+    property Active default True;
+    property AutoDrag default True;
+    property AlphaBlending: TabfFormEffectAlphaBlending read FAlphaBlending
+      write SetAlphaBlending;
+    property Rolling: TabfFormEffectRolling read FRolling write SetRolling;
+    property Shaking: TabfFormEffectShaking read FShaking write SetShaking;
+  // Events
+    property OnMessageAfter;
+    property OnMessageBefore;
+    property OnAlphaBlendingBegin: TNotifyEvent read GetOnAlphaBlendingBegin
+      write SetOnAlphaBlendingBegin;
+    property OnAlphaBlendingEnd: TNotifyEvent read GetOnAlphaBlendingEnd
+      write SetOnAlphaBlendingEnd;
+    property OnRolling: TNotifyEvent read FOnRolling write FOnRolling;
+    property OnUnRolling: TNotifyEvent read FOnUnRolling write FOnUnRolling;
+    property OnShakingBegin: TNotifyEvent read FOnShakingBegin
+      write FOnShakingBegin;
+    property OnShakingEnd: TNotifyEvent read FOnShakingEnd
+      write FOnShakingEnd;
+  end;{TabfFormEffect = class(TabfCustomWndProcHook)}
+
+
+//==============================================================================
+// TabfCustomBackGround
+//==============================================================================
+// Prototype of graphic control for creating filled backgrounds.
+
+  TabfBackGroundFillType = string;
+
+  TabfCustomBackGround = class(TabfGraphicControl)
+  private
+    FFillColorLight: TColor;
+    FFillColorDark: TColor;
+    FFillCached: Boolean;
+    FParentHookAllowed: Boolean;
+    procedure FillBitmapChange(Sender: TObject);
+  // Properties Get/Set
+    procedure SetFillBitmap(const Value: TBitmap);
+    function GetFillColorNormal: TColor;
+  // Messages routines
+    procedure CMColorChanged(var Message: TMessage); message CM_COLORCHANGED;
+    procedure CMSysColorChange(var Message: TMessage); message CM_SYSCOLORCHANGE;
+  protected
+    FNewParentWndProc, FOldParentWndProc: Pointer;
+    FFillTypeIndex: Integer;
+    FGraphicFill: TabfGraphicFill;
+    FFillBitmap: TBitmap;
+    FFillCacheBitmap: TBitmap;
+    FParentHooked, FNeedRedraw: Boolean;
+    procedure SetParent(AParent: TWinControl); override;
+    procedure Loaded; override;
+  // Parent hook routines
+    procedure HookParent; virtual;
+    procedure UnHookParent; virtual;
+    procedure HookParentWndProc(var Message: TMessage); virtual;
+  // Properties Get/Set
+    procedure SetFillCached(Value: Boolean); virtual;
+    procedure SetFillColorDark(Value: TColor); virtual;
+    procedure SetFillColorLight(Value: TColor); virtual;
+    procedure SetFillColorNormal(Value: TColor); virtual;
+    function GetFillType: TabfBackGroundFillType; virtual;
+    procedure SetFillType(const Value: TabfBackGroundFillType); virtual;
+    procedure SetParentHookAllowed(Value: Boolean); virtual;
+  // Properties
+    property FillCached: Boolean read FFillCached write SetFillCached
+      default False;
+    property FillCacheBitmap: TBitmap read FFillCacheBitmap;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure Paint; override;
+    procedure SetBounds(ALeft, ATop, AWidth, AHeight: Integer); override;
+  // Fill routines
+    procedure DrawFill(const ACanvas: TCanvas; const ARect: TRect); virtual;
+    procedure DrawFillCache(const ACanvas: TCanvas; const ARect: TRect); virtual;
+    procedure DrawFillCacheRect(const ACanvas: TCanvas;
+      const ACanvasRect, ACacheRect: TRect); virtual;
+    procedure FreeFillCache; virtual;
+    procedure SaveFillCache; virtual;
+  // Properties
+    property Align default alClient;
+    property FillBitmap: TBitmap read FFillBitmap write SetFillBitmap;
+    property FillColorDark: TColor read FFillColorDark write SetFillColorDark
+      default clBtnShadow;
+    property FillColorLight: TColor read FFillColorLight
+      write SetFillColorLight default clBtnHighLight;
+    property FillColorNormal: TColor read GetFillColorNormal
+      write SetFillColorNormal default clBtnFace;
+    property FillType: TabfBackGroundFillType read GetFillType
+      write SetFillType;
+    property ParentHookAllowed: Boolean read FParentHookAllowed
+      write SetParentHookAllowed default True; 
+  end;{TabfCustomBackGround = class(TGraphicControl)}
+
+
+//==============================================================================
+// TabfBackGround
+//==============================================================================
+// Graphic control for creating filled backgrounds.
+
+  TabfBackGround = class(TabfCustomBackGround)
+  public
+    property FillCacheBitmap;
+  published
+  // Properties
+    property About;
+    property DragCursor;
+    property DragMode;
+    property Enabled;
+    property FillBitmap;
+    property FillCached;
+    property FillColorDark;
+    property FillColorLight;
+    property FillColorNormal;
+    property FillType;
+    property ParentColor;
+    property ParentShowHint;
+    property PopupMenu;
+    property ShowHint;
+    property Visible;
+  // Events 
+    property OnClick;
+    property OnDblClick;
+    property OnDragDrop;
+    property OnDragOver;
+    property OnEndDrag;
+    property OnMouseDown;
+    property OnMouseMove;
+    property OnMouseUp;
+    property OnStartDrag;
+  end;
+
+
+//==============================================================================
+// TabfCreditSection
+//==============================================================================
+// Item of Credits collection
+
+  TabfCreditTextEffect = (cteNone, cteRaised, cteLowered);
+
+  TabfCreditSection = class(TCollectionItem)
+  private
+    FHeader: string;
+    FColCount: Integer;
+    FTextExtent: TSize;
+    FParentBodyFont: Boolean;
+    FParentHeaderFont: Boolean;
+    FColSpace: Integer;
+    FParentColSpace: Boolean;
+    FHeaderTextEffect: TabfCreditTextEffect;
+    FBodyTextEffect: TabfCreditTextEffect;
+    procedure OnChangeEvent(Sender: TObject);
+  // Properties Get/Set
+    procedure SetBody(const Value: TStrings);
+    procedure SetHeader(const Value: string);
+    procedure SetBodyFont(const Value: TFont);
+    procedure SetHeaderFont(const Value: TFont);
+    procedure SetBodyTextEffect(Value: TabfCreditTextEffect);
+    procedure SetHeaderTextEffect(Value: TabfCreditTextEffect);
+    procedure SetColCount(Value: Integer);
+    procedure SetColSpace(Value: Integer);
+    procedure SetParentColSpace(Value: Boolean);
+    procedure SetParentBodyFont(Value: Boolean);
+    procedure SetParentHeaderFont(Value: Boolean);
+    function IsColSpaceStored: Boolean;
+    function IsBodyFontStored: Boolean;
+    function IsHeaderFontStored: Boolean;
+  protected
+    FBody: TStrings;
+    FBodyFont: TFont;
+    FHeaderFont: TFont;
+    procedure RenderText(const ACanvas: TCanvas; const ATop, AWidth: Integer);
+    function TextExtent(const ACanvas: TCanvas): TSize;
+  // Properties Get/Set
+    function GetBodyItems(Index: Integer): string;
+    procedure SetBodyItems(Index: Integer; const Value: string);
+  public
+    constructor Create(ACollection: TCollection); override;
+    destructor Destroy; override;
+    procedure Assign(Source: TPersistent); override;
+  // Properties
+    property BodyItems[Index: Integer]: string read GetBodyItems
+      write SetBodyItems; default;
+  published
+    property Body: TStrings read FBody write SetBody;
+    property BodyFont: TFont read FBodyFont write SetBodyFont
+      stored IsBodyFontStored;
+    property BodyTextEffect: TabfCreditTextEffect read FBodyTextEffect
+      write SetBodyTextEffect default cteRaised;
+    property ColCount: Integer read FColCount write SetColCount default 1;
+    property ColSpace: Integer read FColSpace write SetColSpace
+      stored IsColSpaceStored;
+    property Header: string read FHeader write SetHeader;
+    property HeaderFont: TFont read FHeaderFont write SetHeaderFont
+      stored IsHeaderFontStored;
+    property HeaderTextEffect: TabfCreditTextEffect read FHeaderTextEffect
+      write SetHeaderTextEffect default cteRaised;
+    property ParentColSpace: Boolean read FParentColSpace
+      write SetParentColSpace default True;
+    property ParentBodyFont: Boolean read FParentBodyFont
+      write SetParentBodyFont default True;
+    property ParentHeaderFont: Boolean read FParentHeaderFont
+      write SetParentHeaderFont default True;
+  end;{TabfCreditSection = class(TCollectionItem)}
+
+
+//==============================================================================
+// TabfCreditSections
+//==============================================================================
+// Credits collection
+
+  TabfCreditSections = class(TCollection)
+  private
+    FHeaderFont: TFont;
+    FBodyFont: TFont;
+    FColSpace: Integer;
+    FHeight: Integer;
+    FWidth: Integer;
+    FSectionSpace: Integer;
+    procedure OnChangeEvent(Sender: TObject);
+  // Properties Get/Set
+    procedure SetBodyFont(const Value: TFont);
+    procedure SetHeaderFont(const Value: TFont);
+    procedure SetColSpace(Value: Integer);
+    procedure SetSectionSpace(Value: Integer);
+    function GetOwnerProperty: TabfCustomCredits;
+    function IsBodyFontStored: Boolean;
+    function IsHeaderFontStored: Boolean;
+  protected
+    FOwner: TPersistent;
+    function GetOwner: TPersistent; override;
+    procedure Update(Item: TCollectionItem); override;
+  // Properties Get/Set
+    function GetItems(Index: Integer): TabfCreditSection;
+    procedure SetItems(Index: Integer; const Value: TabfCreditSection);
+  public
+    constructor Create(AOwner: TPersistent);
+    destructor Destroy; override;
+    procedure Assign(Source: TPersistent); override;
+    function Add: TabfCreditSection;
+    procedure RenderText(const ACanvas: TCanvas; const ATop, AWidth: Integer);
+    function TextExtent(const ACanvas: TCanvas): TSize;
+  // Property
+    property Owner: TabfCustomCredits read GetOwnerProperty;
+  public
+    property BodyFont: TFont read FBodyFont write SetBodyFont
+      stored IsBodyFontStored;
+    property HeaderFont: TFont read FHeaderFont write SetHeaderFont
+      stored IsHeaderFontStored;
+    property ColSpace: Integer read FColSpace write SetColSpace default 0;
+    property SectionSpace: Integer read FSectionSpace write SetSectionSpace
+      default 0;
+    property Items[Index: Integer]: TabfCreditSection read GetItems
+      write SetItems; default;
+    property Width: Integer read FWidth;
+    property Height: Integer read FHeight;
+  end;
+
+
+//==============================================================================
+// TabfCustomCredits
+//==============================================================================
+// Prototype of credits rendering control
+
+  TabfCustomCredits = class(TabfCustomBackGround)
+  private
+    FPathFallFrom: Integer;
+    FPathEnd: Integer;
+    FPathDirection: TabfDirection;
+    FPathBegin: Integer;
+    FPathRiseTo: Integer;
+    FCreditsPosition: Integer;
+    FNeedSetPathProps: Boolean;
+    FBackward: Boolean;
+    FCycled: Boolean;
+    FOnTimer: TNotifyEvent;
+    FOnCreditsEnd: TNotifyEvent;
+    procedure CreditsChange;
+  // Properties Get/Set
+    function  GetMaxPosition: Integer;
+    function  GetMinPosition: Integer;
+    function  GetCreditsBodyFont: TFont;
+    procedure SetCreditsBodyFont(const Value: TFont);
+    function  GetCreditsHeaderFont: TFont;
+    procedure SetCreditsHeaderFont(const Value: TFont);
+    function  GetCreditsSectionSpace: Integer;
+    procedure SetCreditsSectionSpace(Value: Integer);
+    procedure SetPathBegin(Value: Integer);
+    procedure SetPathDirection(Value: TabfDirection);
+    procedure SetPathEnd(Value: Integer);
+    function  GetPathReverseOrder: Boolean;
+    procedure SetPathFallFrom(Value: Integer);
+    procedure SetPathRiseTo(Value: Integer);
+    function  GetTimerEnabled: Boolean;
+    procedure SetTimerEnabled(Value: Boolean);
+    function  GetTimerInterval: Cardinal;
+    procedure SetTimerInterval(Value: Cardinal);
+  // Messages routines
+    procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
+  protected
+    FBufferBitmap, FCreditsBitmap: TBitmap;
+    FCredits: TabfCreditSections;
+{$IfDef UseThreadTimer}
+    FTimer: TabfThreadTimer;
+{$Else UseThreadTimer}
+    FTimer: TabfCustomTimer;
+{$EndIf UseThreadTimer}
+    procedure Loaded; override;
+    procedure ResetCredits; virtual;
+    procedure UpdateSize; virtual;
+    procedure UpdatePath; virtual;
+    procedure OnTimerEvent(Sender: TObject); virtual;
+    procedure DoCreditsEnd; dynamic;
+  // Properties Get/Set
+    procedure SetCredits(const Value: TabfCreditSections);
+    procedure SetCreditsPosition(Value: Integer);
+  // Properties
+    property FillCached default True;
+    property PathDirection: TabfDirection read FPathDirection
+      write SetPathDirection default diVertical;
+  // Events
+    property OnTimer: TNotifyEvent read FOnTimer write FOnTimer;
+    property OnCreditsEnd: TNotifyEvent read FOnCreditsEnd write FOnCreditsEnd;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure Paint; override;
+    procedure DrawCredits; virtual;
+    procedure SetBounds(ALeft, ATop, AWidth, AHeight: Integer); override;
+    procedure Next; virtual;
+    procedure Prev; virtual;
+  // Properties
+    property Backward: Boolean read FBackward write FBackward default False;
+    property Credits: TabfCreditSections read FCredits write SetCredits;
+    property CreditsBodyFont: TFont read GetCreditsBodyFont
+      write SetCreditsBodyFont;
+    property CreditsHeaderFont: TFont read GetCreditsHeaderFont
+      write SetCreditsHeaderFont;
+    property CreditsSectionSpace: Integer read GetCreditsSectionSpace
+      write SetCreditsSectionSpace default 0;
+    property CreditsPosition: Integer read FCreditsPosition
+      write SetCreditsPosition;
+    property Cycled: Boolean read FCycled write FCycled default True;
+    property MaxPosition: Integer read GetMaxPosition;
+    property MinPosition: Integer read GetMinPosition;
+    property PathBegin: Integer read FPathBegin write SetPathBegin default 0;
+    property PathEnd: Integer read FPathEnd write SetPathEnd default 0;
+    property PathFallFrom: Integer read FPathFallFrom
+      write SetPathFallFrom default 0;
+    property PathReverseOrder: Boolean read GetPathReverseOrder;
+    property PathRiseTo: Integer read FPathRiseTo
+      write SetPathRiseTo default 0;
+    property TimerEnabled: Boolean read GetTimerEnabled
+      write SetTimerEnabled default True;
+    property TimerInterval: Cardinal read GetTimerInterval
+      write SetTimerInterval;
+  end;{TabfCustomCredits = class(TabfCustomBackGround)}
+
+
+//==============================================================================
+// TabfCredits
+//==============================================================================
+// Credits rendering control
+
+  TabfCredits = class(TabfCustomCredits)
+  published
+  // Properties
+    property About;
+    property Backward;
+    property DragCursor;
+    property Credits;
+    property CreditsBodyFont;
+    property CreditsHeaderFont;
+    property CreditsSectionSpace;
+    property CreditsPosition;
+    property Cycled;
+    property DragMode;
+    property Enabled;
+    property FillBitmap;
+    property FillColorDark;
+    property FillColorLight;
+    property FillColorNormal;
+    property FillType;
+    property ParentShowHint;
+    property PathBegin;  // Do not change order of PathXXX properties
+    property PathEnd;
+    property PathRiseTo;
+    property PathFallFrom;
+    property PopupMenu;
+    property ShowHint;
+    property TimerEnabled;
+    property TimerInterval;
+    property Visible;
+  // Events
+    property OnClick;
+    property OnDblClick;
+    property OnDragDrop;
+    property OnDragOver;
+    property OnEndDrag;
+    property OnMouseDown;
+    property OnMouseMove;
+    property OnMouseUp;
+    property OnStartDrag;
+    property OnTimer;
+    property OnCreditsEnd;
+  end;
+
+
+//==============================================================================
+// TabfMovablePanel
+//==============================================================================
+// Panel with movement ability.
+
+  TabfMoveDirection = (drUp, drDown, drLeft, drRight);
+
+  TabfMovablePanel = class(TPanel)
+  private
+    FAbout: string;
+    FAutoBack: Boolean;
+    FAutoRepeat: Boolean;
+    FMoveDirection: TabfMoveDirection;
+    FMoveFullTime: Cardinal;
+    FMoveLength: Integer;
+    FOnDoMove: TNotifyEvent;
+    FOnUndoMove: TNotifyEvent;
+    FOnMoveEnd: TNotifyEvent;
+  protected
+    FRealDirection: TabfMoveDirection; // Unchangeable in run-time flag
+    FMovingNow, FToDirection: Boolean;
+    FBeginTop, FBeginLeft: Integer;
+    FTimeOfMoveBeginning: Cardinal;
+{$IfDef UseThreadTimer}
+    FTimer: TabfThreadTimer;
+{$Else UseThreadTimer}
+    FTimer: TabfCustomTimer;
+{$EndIf UseThreadTimer}
+    procedure Loaded; override;
+  // Timer routines
+    procedure PrepareDirection(AToDirection: Boolean); virtual;
+    procedure OnTimerEvent(Sender: TObject); virtual;
+  // Properties Get/Set
+    function GetTimerInterval: Cardinal;
+    procedure SetTimerInterval(Value: Cardinal); virtual;
+    function GetMoved: Boolean;
+    procedure SetMoveLength(Value: Integer); virtual;
+    procedure SetMoveFullTime(Value: Cardinal);
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  // Movement routines
+    procedure InverseDirection; virtual;
+    procedure DoMove; virtual;
+    procedure UndoMove; virtual;
+    procedure SetBeginPosition(X, Y: Integer); virtual;
+  // Properties
+    property Moved: Boolean read GetMoved;
+    property BeginLeft: Integer read FBeginLeft;
+    property BeginTop: Integer read FBeginTop;
+  published
+  // Properties
+    property About: string read FAbout write FAbout stored False;
+    property AutoBack: Boolean read FAutoBack write FAutoBack default False;
+    property AutoRepeat: Boolean read FAutoRepeat write FAutoRepeat
+      default False;
+    property MoveDirection: TabfMoveDirection read FMoveDirection
+      write FMoveDirection default drDown;
+    property MoveFullTime: Cardinal read FMoveFullTime write SetMoveFullTime
+      default 1000;
+    property MoveLength: Integer read FMoveLength write SetMoveLength;
+    property TimerInterval: Cardinal read GetTimerInterval write SetTimerInterval
+      default 50;
+  // Events
+    property OnDoMove: TNotifyEvent read FOnDoMove write FOnDoMove;
+    property OnUndoMove: TNotifyEvent read FOnUndoMove write FOnUndoMove;
+    property OnMoveEnd: TNotifyEvent read FOnMoveEnd write FOnMoveEnd;
+  end;{TabfMovablePanel = class(TPanel)}
+
+
+//==============================================================================
+// TabfMagnifier
+//==============================================================================
+// Magnignifying control. Works with desktop or any specified window.
+
+{$IfNDef D4}
+
+  PCursorInfo = ^TCursorInfo;
+  tagCURSORINFO = packed record
+    cbSize: DWORD;
+    flags: DWORD;
+    hCursor: HCURSOR;
+    ptScreenPos: TPoint;
+  end;
+  TCursorInfo = tagCURSORINFO;
+  
+{$EndIf D4}
+
+  TabfMagnifier = class(TabfGraphicControl)
+  private
+    FPainting: Boolean;
+    FShowCursor: Boolean;
+    FLargeCursor: Boolean;
+  // Properties Get/Set
+    procedure SetSourceWindow(Value: THandle);
+    function GetTimerEnabled: Boolean;
+    procedure SetTimerEnabled(Value: Boolean);
+    function GetTimerInterval: Cardinal;
+    procedure SetTimerInterval(Value: Cardinal);
+    procedure SetZoomCoef(Value: Double);
+  protected
+    FTimer: TabfCustomTimer;
+    FBuffer, FCursor, FDoubleCursor: TBitmap;
+    FCursorInfo: TCursorInfo;
+    FIconInfo: TIconInfo;
+    FCursorPos, FInternalCursorPos: TPoint;
+    FZoomCoef: Double;
+    FSourceWindow: THandle;
+    FSourceWindowRect: TRect;
+    FDesktopCanvas: TCanvas;
+    procedure OnTimer(Sender: TObject); virtual;
+    procedure UpdateMagnifier; virtual;
+    function PrepareCursor: Boolean; virtual;
+    function DrawCursor(const ACanvas: TCanvas; const APos: TPoint;
+      DoubleSize: Boolean): Boolean; virtual;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure Paint; override;
+  published
+    property About;
+    property Align;
+    property Color;
+    property Cursor;
+    property ShowHint;
+    property ParentShowHint;
+    property ZoomCoef: Double read FZoomCoef write SetZoomCoef;
+    property SourceWindow: THandle read FSourceWindow write SetSourceWindow;
+    property ShowCursor: Boolean read FShowCursor write FShowCursor
+      default True;
+    property LargeCursor: Boolean read FLargeCursor write FLargeCursor
+      default True;
+    property TimerInterval: Cardinal read GetTimerInterval
+      write SetTimerInterval default 200;
+    property TimerEnabled: Boolean read GetTimerEnabled write SetTimerEnabled
+      default True;
+    property Visible;
+{$IfDef D4}
+    property Anchors;
+    property Constraints;
+{$EndIf D4}
+  end;{TabfMagnifier = class(TabfGraphicControl)}
+
+
+//==============================================================================
+// GraphicFill routines
+//==============================================================================
+
+//==============================================================================
+// GraphicFill routines
+//==============================================================================
+// Don't localize
+
+const
+  SabfGraphicFill_ColorFill     = '(ColorFill)';
+  SabfGraphicFill_None          = '(None)';
+  SabfGraphicFill_BitmapCenter  = '(BitmapCenter)';
+  SabfGraphicFill_BitmapStretch = '(BitmapStretch)';
+  SabfGraphicFill_BitmapTile    = '(BitmapTile)';
+  SabfGraphicFill_GradientHorz  = 'GradientHorz';
+  SabfGraphicFill_GradientVert  = 'GradientVert';
+  SabfGraphicFill_GradientDiag1 = 'GradientDiag1';
+  SabfGraphicFill_GradientDiag2 = 'GradientDiag2';
+  SabfGraphicFill_Adobe         = 'Adobe';
+  SabfGraphicFill_Alcatraz      = 'Alcatraz';
+  SabfGraphicFill_ElPaso        = 'ElPaso';
+  SabfGraphicFill_Hanoi         = 'Hanoi';
+  SabfGraphicFill_Harvard       = 'Harvard';
+  SabfGraphicFill_Holes         = 'Holes';
+  SabfGraphicFill_Hollywood     = 'Hollywood';
+  SabfGraphicFill_Honolulu      = 'Honolulu';
+  SabfGraphicFill_London        = 'London';
+  SabfGraphicFill_Manhattan     = 'Manhattan';
+  SabfGraphicFill_Minsk         = 'Minsk';
+  SabfGraphicFill_Orleans       = 'Orleans';
+  SabfGraphicFill_Oshawa        = 'Oshawa';
+  SabfGraphicFill_Philadelphia  = 'Philadelphia';
+  SabfGraphicFill_Pittsburg     = 'Pittsburg';
+  SabfGraphicFill_Sahara        = 'Sahara';
+
+var
+  abfGraphicFillList: TStrings; // List of registered GraphicFills
+
+//------------------------------------------------------------------------------
+// Registers GraphicFill with given Name.
+procedure abfRegisterGraphicFill(const AName: string;
+  AProc: TabfGraphicFillProc; ASizeDepended, ANeedBitmap: Boolean);
+
+//------------------------------------------------------------------------------
+// Returns GraphicFill procedure by Name
+function abfGetGraphicFillProc(const AName: string): TabfGraphicFillProc;
+
+//------------------------------------------------------------------------------
+// Draws one Sand Grain on Canvas at the (X, Y) point with given colors.
+procedure abfDrawGrain(const Canvas: TCanvas; X, Y: Integer;
+  ColorLight, ColorDark: TColor);
+
+//------------------------------------------------------------------------------
+// Renders a sand on the Canvas in the given Rect with specified Colors. Specify
+// Integer(GrainCount) as a caunt of sand grains should be drawn.
+procedure abfDrawSand(const Canvas: TCanvas; const Rect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; GrainCount: Pointer);
+
+//------------------------------------------------------------------------------
+// Draws a hole (like a bubble) on the Canvas in the given Rect with specified
+// Colors. UserData is not used.
+procedure abfDrawHole(const Canvas: TCanvas; const Rect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; UserData: Pointer);
+
+//------------------------------------------------------------------------------
+// Draws a steel brick (with 4 bolts) on the Canvas in the ARect area with
+// specified colors. Use Integer(BoltSize) to specify the size of bolts
+// (from 1 to 256, 2 by default)
+procedure abfDrawSteelBrick(const Canvas: TCanvas; const Rect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; BoltSize: Pointer);
+
+//------------------------------------------------------------------------------
+// Draws two vertical boards on the Canvas in the Rect area.
+procedure abfDrawVertBoards(const Canvas: TCanvas; const Rect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; UserData: Pointer);
+  
+//------------------------------------------------------------------------------
+// Draws an Adobe styled (Bubbles on a the sand) fill on the Canvas in the ARect
+// area with specified colors. Use Integer(HoleSize) to specify the size of
+// holes (Bubbles) (from 1 to 256, 7 by default).
+procedure abfGraphicFill_Adobe(const Canvas: TCanvas; const ARect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; HoleSize: Pointer);
+
+//------------------------------------------------------------------------------
+// Draws a steel bricks (each with 4 bolts) and vertical grid fill on the Canvas
+// in the ARect area with specifiedcolors. Use Integer(BoltSize) to specify
+// the size of bolts (from 1 to 256, 2 by default)
+procedure abfGraphicFill_Alcatraz(const Canvas: TCanvas; const ARect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; BoltSize: Pointer);
+
+//------------------------------------------------------------------------------
+// Fills ARect area of the Canvas with ColorNormal and draws TBitmap(FillBitmap)
+// in the center of ARect.
+procedure abfGraphicFill_BitmapCenter(const ACanvas: TCanvas;
+  const ARect: TRect; ColorNormal, ColorLight, ColorDark: TColor;
+  FillBitmap: Pointer);
+
+//------------------------------------------------------------------------------
+// Stretches TBitmap(FillBitmap) to the ARect area of Canvas.
+procedure abfGraphicFill_BitmapStretch(const ACanvas: TCanvas;
+  const ARect: TRect; ColorNormal, ColorLight, ColorDark: TColor;
+  FillBitmap: Pointer);
+
+//------------------------------------------------------------------------------
+// Fills the ARect area of Canvas by tiling of TBitmap(FillBitmap)
+procedure abfGraphicFill_BitmapTile(const ACanvas: TCanvas; const ARect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; FillBitmap: Pointer);
+
+//------------------------------------------------------------------------------
+// Simply fills the ARect area of Canvas with ColorNormal
+procedure abfGraphicFill_ColorFill(const Canvas: TCanvas; const ARect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; UserData: Pointer);
+
+//------------------------------------------------------------------------------
+// Draws horizontal gradient in ARect area of the Canvas. ColorLight on left,
+// ColorDark on right.
+procedure abfGraphicFill_GradientHorz(const Canvas: TCanvas; const ARect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; UserData: Pointer);
+
+//------------------------------------------------------------------------------
+// Draws vertival gradient in ARect area of the Canvas. ColorLight on top,
+// ColorDark on bottom.
+procedure abfGraphicFill_GradientVert(const Canvas: TCanvas; const ARect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; UserData: Pointer);
+
+//------------------------------------------------------------------------------
+// Draws "ElPaso" (Boards with some points) fill on the Canvas in the ARect area
+// with specified Colors.
+procedure abfGraphicFill_ElPaso(const Canvas: TCanvas; const ARect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; UserData: Pointer);
+
+//------------------------------------------------------------------------------
+// Draws "Hanoi" (Wood engraving boards) fill on the Canvas in the ARect area
+// with specified Colors.
+procedure abfGraphicFill_Hanoi(const Canvas: TCanvas; const ARect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; UserData: Pointer);
+
+//------------------------------------------------------------------------------
+// Draws "school copy-book's paper" fill on the Canvas in the ARect area with
+// specified Colors. Use Integer(ShadowSize) to specify a size of shadow
+// (from 1 to 2048, 3 by default).
+procedure abfGraphicFill_Harvard(const Canvas: TCanvas; const ARect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; ShadowSize: Pointer);
+
+//------------------------------------------------------------------------------
+// Draws Holes (Bubbles) fill on the Canvas in the ARect area with specified
+// Colors. Use Integer(HoleSize) to specify the size of holes (Bubbles)
+// (from 1 to 256, 7 by default).
+procedure abfGraphicFill_Holes(const Canvas: TCanvas; const ARect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; HoleSize: Pointer);
+
+//------------------------------------------------------------------------------
+// Draws Chess Board fill on the Canvas in the ARect area with specified Colors.
+procedure abfGraphicFill_Hollywood(const Canvas: TCanvas; const ARect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; UserData: Pointer);
+
+//------------------------------------------------------------------------------
+// Draws X lines fill on the Canvas in the ARect area with specified Colors.
+procedure abfGraphicFill_Honolulu(const Canvas: TCanvas; const ARect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; UserData: Pointer);
+
+//------------------------------------------------------------------------------
+// Draws "Old Bricks" fill on the Canvas in the ARect area with specified
+// Colors.
+procedure abfGraphicFill_London(const Canvas: TCanvas; const ARect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; UserData: Pointer);
+
+//------------------------------------------------------------------------------
+// Draws "New Bricks" fill on the Canvas in the ARect area with specified
+// Colors.
+procedure abfGraphicFill_Manhattan(const Canvas: TCanvas; const ARect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; UserData: Pointer);
+
+//------------------------------------------------------------------------------
+// Draws Vertical Light/Dark bords fill on the Canvas in the ARect area with
+// specified Colors.
+procedure abfGraphicFill_Minsk(const Canvas: TCanvas; const ARect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; UserData: Pointer);
+
+//------------------------------------------------------------------------------
+// Does not fill any part of Canvas.
+procedure abfGraphicFill_None(const Canvas: TCanvas; const ARect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; UserData: Pointer);
+
+//------------------------------------------------------------------------------
+// Draws Holes(Bubbles) with Vertical grid fill on the Canvas in the ARect area
+// with specified Colors. Use Integer(HoleSize) to specify the size of holes
+// (Bubbles) (from 1 to 256, 7 by default).
+procedure abfGraphicFill_Orleans(const Canvas: TCanvas; const ARect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; HoleSize: Pointer);
+
+//------------------------------------------------------------------------------
+// Draws Vertical grid under the sand fill on the Canvas in the ARect area with
+// specified Colors.
+procedure abfGraphicFill_Oshawa(const Canvas: TCanvas; const ARect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; UserData: Pointer);
+
+//------------------------------------------------------------------------------
+// Draws "paper with shadow" styled fill on the Canvas in the ARect area with
+// specified colors. Use Integer(ShadowSize) to specify a size of shadow
+// (from 1 to 2048, 7 by default).
+procedure abfGraphicFill_Philadelphia(const Canvas: TCanvas; const ARect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; ShadowSize: Pointer);
+
+//------------------------------------------------------------------------------
+// Draws a steel bricks (each with 4 bolts) fill on the Canvas in the ARect
+// area with specified colors. Use Integer(BoltSize) to specify the size
+// of bolts (from 1 to 256, 2 by default)
+procedure abfGraphicFill_Pittsburg(const Canvas: TCanvas; const ARect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; BoltSize: Pointer);
+
+//------------------------------------------------------------------------------
+// Draws a Sahara sand fill on the Canvas in the ARect area with specified
+// colors
+procedure abfGraphicFill_Sahara(const Canvas: TCanvas; const ARect: TRect;
+  ColorNormal, ColorLight, ColorDark: TColor; UserData: Pointer);
+
+{******************************************************************************}
+implementation

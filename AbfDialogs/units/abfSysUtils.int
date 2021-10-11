@@ -1,0 +1,752 @@
+{*******************************************************************************
+
+  ABF Visual Components Library
+
+  Copyright (c) 2000-2005 ABF software, Inc.
+  All Rights Reserved.
+
+  e-mail: info@abf-dev.com
+  web:    http://www.abf-dev.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+  RESTRICTIONS
+
+  THE SOURCE CODE CONTAINED WITHIN THIS FILE AND ALL RELATED FILES OR ANY
+PORTION OF ITS CONTENTS SHALL AT NO TIME BE COPIED, TRANSFERRED, SOLD,
+DISTRIBUTED, OR OTHERWISE MADE AVAILABLE TO OTHER INDIVIDUALS WITHOUT EXPRESS
+WRITTEN CONSENT AND PERMISSION FROM THE ABF SOFTWARE, INC.
+
+  CONSULT THE END USER LICENSE AGREEMENT (EULA) FOR INFORMATION ON ADDITIONAL
+RESTRICTIONS.
+
+*******************************************************************************}
+unit abfSysUtils;
+
+{$I abf.inc}
+
+interface
+
+uses
+  Windows, Classes, SysUtils, Registry, IniFiles,
+// ABF VCL  
+  abfClasses;
+
+//==============================================================================
+// Exceptions
+//==============================================================================
+
+{$IfNDef D3}
+type
+  EWin32Error = class(Exception)
+  public
+    ErrorCode: DWORD;
+  end;
+
+procedure RaiseLastWin32Error;
+function Win32Check(RetVal: BOOL): BOOL;
+{$EndIf D3}
+
+
+//==============================================================================
+// Math, calculation, coordinates utilities
+//==============================================================================
+
+function Max(A, B: Integer): Integer;
+function Min(A, B: Integer): Integer;
+
+//------------------------------------------------------------------------------
+// Raise base to an integral power. Very fast. Same as Borland's routine
+function IntPower(Base: Extended; Exponent: Integer): Extended register;
+
+//------------------------------------------------------------------------------
+// Raise base to any power. For fractional exponents, or |exponents| > MaxInt,
+// base must be > 0. 
+function Power(Base, Exponent: Extended): Extended;
+
+//------------------------------------------------------------------------------
+// Use this function to align the InnerRect rect relative to the OuterRect rect
+// depending on the HorzAlign and VertAlign prameters.
+function abfAlignRectInRect(const InnerRect, OuterRect: TRect;
+  HorzAlign: TabfHorzAlign; VertAlign: TabfVertAlign): TRect;
+
+//==============================================================================
+// System utilities
+//==============================================================================
+
+//------------------------------------------------------------------------------
+// Returns enviroment varibale value by name
+function abfGetEnvVar(const Name: string): string;
+
+//------------------------------------------------------------------------------
+// Expands string that contains any number of %VariableName% environment
+// variables with its values
+function abfExpandEnvStr(const S: string): string;
+
+//------------------------------------------------------------------------------
+// Returns workgroup name if network is set.
+function abfGetWorkgroupName: string;
+
+//------------------------------------------------------------------------------
+// Returns a rect of current working area (desktop without the taskbar)
+function abfGetWorkAreaRect: TRect;
+
+//------------------------------------------------------------------------------
+// Returns current state for shift keys (Shift, Ctrl, Alt).
+function abfGetShiftState: TShiftState;
+
+//------------------------------------------------------------------------------
+// Returns a name of Pressed/Released key by lParam of KeyboardMessage
+function abfGetKeyText(lParam: LongInt): string;
+
+//------------------------------------------------------------------------------
+// Returns a name value ($00xx1234) for the given keyboard layout.
+function abfGetLayoutID(KL: HKL): LongWord;
+
+//------------------------------------------------------------------------------
+// Returns a list of supported keyboard layouts. Items of AList will contain
+// names of layouts, Objects contain HKL values for each layout.
+// Note: The AList will not be cleared before using.
+procedure abfGetKeyboardLayoutList(AList: TStrings);
+
+//------------------------------------------------------------------------------
+// Determines is CapsLock on or off.
+function abfIsCapsLock: Boolean;
+
+//------------------------------------------------------------------------------
+// Determines is NumLock on or off.
+function abfIsNumLock: Boolean;
+
+//------------------------------------------------------------------------------
+// Determines is ScrollLock on or off.
+function abfIsScrollLock: Boolean;
+
+//------------------------------------------------------------------------------
+// Determines is screen saver running or not.
+function abfIsScreenSaverRunning: Boolean;
+
+//------------------------------------------------------------------------------
+// Outputs sound thru the Speaker under Win9x.
+procedure abfSound(Frequency: Cardinal);
+
+//------------------------------------------------------------------------------
+// Turn off the Speaker sound under Win9x.
+procedure abfNoSound;
+
+//------------------------------------------------------------------------------
+// Outputs sound thru the Speaker under any windows version.
+procedure abfSpeakerBeep(Frequency, Duration: Cardinal);
+
+  
+//==============================================================================
+// System versions
+//==============================================================================
+
+type
+  TabfWindowsVersion = (wvUnknown,  wvWinNT3, wvWin95, wvWin95OSR2, wvWinNT4,
+    wvWin98, wvWin98SE, wvWinME, wvWin2000, wvWinXP, wvWin2003);
+  TabfNtProductType = (ptUnknown, ptWorkStation, ptServer, ptAdvancedServer);
+
+const
+  IsWin95    : Boolean = False;
+  IsWin95OSR2: Boolean = False;
+  IsWin98    : Boolean = False;
+  IsWin98SE  : Boolean = False;
+  IsWinME    : Boolean = False;
+  IsWinNT3   : Boolean = False;
+  IsWinNT4   : Boolean = False;
+  IsWin2K    : Boolean = False;
+  IsWin2000  : Boolean = False;
+  IsWinXP    : Boolean = False;
+  IsWin2003  : Boolean = False;
+
+  IsWin9x          : Boolean = False;
+  IsWinNT          : Boolean = False;
+  IsWin98orHigher  : Boolean = False;
+  IsWin2000orHigher: Boolean = False;
+  IsWinXPorHigher  : Boolean = False;
+
+{$IfNDef D3}
+  Win32Platform: Integer = 0;
+  Win32MajorVersion: Integer = 0;
+  Win32MinorVersion: Integer = 0;
+  Win32BuildNumber: Integer = 0;
+  Win32CSDVersion: string = '';
+{$EndIf D3}
+
+//------------------------------------------------------------------------------
+// Returns the Windows version as an enumerated type. Based on JCL routine.
+function abfGetWindowsVersion: TabfWindowsVersion;
+
+//------------------------------------------------------------------------------
+// Returns which edition of Windows NT is running on the system.
+function abfNtProductType: TabfNtProductType;
+
+//------------------------------------------------------------------------------
+// Returns version of shell32.dll (Based on JEDI stuff)
+function abfGetShellVersion: Integer;
+
+
+//==============================================================================
+// String utilities
+//==============================================================================
+
+type
+  TabfCharSet = set of Char;
+
+  TabfStrRec = record
+    AllocSize: LongInt;
+    RefConunt: LongInt;
+    Length   : LongInt;
+  end;
+
+{$IfNDef D3}
+//------------------------------------------------------------------------------
+// LastDelimiter returns the byte index in S of the rightmost whole
+// character that matches any character in Delimiters (except null (#0)).
+// S may contain multibyte characters; Delimiters must contain only single
+// byte non-null characters.
+// Example: LastDelimiter('\.:', 'c:\filename.ext') returns 12.
+function LastDelimiter(const Delimiters, S: string): Integer;
+{$EndIf D3}
+
+//------------------------------------------------------------------------------
+// Searches a position of the SubStr sub-string in the S string from the From
+// position. Returns an integer value that is the index of the first character
+// of SubStr within S. Case-sensitive. When SubStr is not found, function
+// returns zero.
+function abfPosEx(const SubStr, S: string; From: Integer): Integer;
+
+//------------------------------------------------------------------------------
+// Searches a position of the SubStr sub-string in the S string backward from
+// the From position. Returns an integer value that is the index of the first
+// character of SubStr within S. Case-sensitive. When SubStr is not found,
+function abfBackPosEx(const SubStr, S: string; From: Integer): Integer;
+
+//------------------------------------------------------------------------------
+// Searches for SubStr within S string and returns an integer value that is the
+// index of the first character of Substr within S. Case-sensitive. When SubStr
+// is not found, function returns zero.
+function abfBackPos(const SubStr, S: string): Integer;
+
+//------------------------------------------------------------------------------
+// Returns the index value of the first character in a specified substring that
+// occurs in the S string after the FromPos position. Ignores string cases.
+function abfPosIgnoreCaseEx(const SubStr, S: string; FromPos: Integer): Integer;
+
+//------------------------------------------------------------------------------
+// Returns the index value of the first character in a specified substring that
+// occurs in the S string. Ignores string cases.
+function abfPosIgnoreCase(const SubStr, S: string): Integer;
+
+//------------------------------------------------------------------------------
+// Replaces the OldStr sub-string in the S string from the Index position to
+// the NewStr sub-string.
+procedure abfReplace(var S: string; Index: Integer; const OldStr, NewStr: string);
+
+//------------------------------------------------------------------------------
+// Replaces all occured OldStr sub-strings with NewStr sub-strings in the given
+// S string. Set IgnoreCase True to ignore string cases.
+procedure abfReplaceSubStringsEx(var S: string; const OldStr, NewStr: string;
+  IgnoreCase: Boolean);
+
+//------------------------------------------------------------------------------
+// Replaces all occured OldStr sub-strings with NewStr sub-strings in the given
+// S string.
+procedure abfReplaceSubStrings(var S: string; const OldStr, NewStr: string);
+
+//------------------------------------------------------------------------------
+// Replaces all occured OldChar with NewChar in the given S string
+procedure abfReplaceChars(var S: string; OldChar, NewChar: Char);
+
+//------------------------------------------------------------------------------
+// Removes all chars contained in CharSet from the S string
+function abfRemoveCharSet(const CharSet: TabfCharSet; const S: string): string;
+
+//------------------------------------------------------------------------------
+// Leaves in the S string only chars contained in CharSet
+function abfLeaveCharSet(const CharSet: TabfCharSet; const S: string): string;
+
+//------------------------------------------------------------------------------
+// Adds the C char to the end of the S string if it it ends with other char.
+function abfAddChar(const S: string; C: Char): string;
+
+//------------------------------------------------------------------------------
+// Adds the C char at the beginning of the S string if it begins with other
+// char.
+function abfAddCharBefore(const S: string; C: Char): string;
+
+//------------------------------------------------------------------------------
+// Deletes a part of the S string after the C character occurred after the
+// FromPos position.
+procedure abfDeleteAfterCharEx(var S: string; C: Char; FromPos: Integer);
+
+//------------------------------------------------------------------------------
+// Deletes a part of the S string before the C character occurred after the
+// FromPos position.
+procedure abfDeleteBeforeCharEx(var S: string; C: Char; FromPos: Integer);
+
+//------------------------------------------------------------------------------
+// Deletes a part of the S string after the C char.
+procedure abfDeleteAfterChar(var S: string; C: Char);
+
+//------------------------------------------------------------------------------
+// Deletes a part of the S string before the C char.
+procedure abfDeleteBeforeChar(var S: string; C: Char);
+
+//------------------------------------------------------------------------------
+// Peplaces all parameters in the S string by values taken from the Params list.
+// Parameters in S string should be enclosed with Separator symbol
+// (%AppPath% for example). Format of Partams list items is
+// 'ParamName=ParamValue'.
+function abfChangeParams(const S: string; Params: TStrings;
+  Separator: Char): string;
+
+//------------------------------------------------------------------------------
+// Encloses the S string with C chars. If AllowDoubleEnclose is True already
+// enclosed string will be enclosed again.
+function abfEncloseStringEx(const S: string; C: Char;
+  AllowDoubleEnclose: Boolean): string;
+
+//------------------------------------------------------------------------------
+// Encloses the S string with C chars. Already enclosed string will not be
+// changed
+function abfEncloseString(const S: string; C: Char): string;
+
+//------------------------------------------------------------------------------
+// Trims leading characters are present in CharSet from the S string.
+function abfTrimLeft(const S: string; const CharSet: TabfCharSet): string;
+
+//------------------------------------------------------------------------------
+// Trims trailing characters are present in CharSet from the S string.
+function abfTrimRight(const S: string; const CharSet: TabfCharSet): string;
+
+//------------------------------------------------------------------------------
+// Trims leadind and trailing characters are present in CharSet from the string.
+function abfTrim(const S: string; const CharSet: TabfCharSet): string;
+
+
+//==============================================================================
+// Conversion utilities
+//==============================================================================
+
+//------------------------------------------------------------------------------
+// Converts a byte value to the binary string (01010111)
+function abfByteToBin(Value: Byte): string;
+
+//------------------------------------------------------------------------------
+// Converts an integer value to the binary string (01101001). The Digits
+// parameter specifies lengts of resulting string.
+function abfIntToBin(Value, Digits: Integer): string;
+
+//------------------------------------------------------------------------------
+// Converts a binary string (01101001) to the integer value.
+function abfBinToInt(const Value: string): Integer;
+
+//------------------------------------------------------------------------------
+// Converts an integer value to the octal string (1277).
+function abfIntToOct(Value, Digits: Integer): string;
+
+//------------------------------------------------------------------------------
+// Converts an octal string (1277) to the integer value.
+function abfOctToInt(const Value: string): Integer;
+
+//------------------------------------------------------------------------------
+// Converts an integer value to the roman string (XIV).
+function abfIntToRoman(Value: Integer): string;
+
+//------------------------------------------------------------------------------
+// Converts a roman string (XIV) to the integer value.
+function abfRomanToInt(const Value: string): Integer;
+
+//------------------------------------------------------------------------------
+// Converts a boolean value to a string.
+function abfBooleanToStr(B: Boolean): string;
+
+//------------------------------------------------------------------------------
+// Converts a string value to a boolean.
+function abfStrToBoolean(const S: string): Boolean;
+
+//------------------------------------------------------------------------------
+// Converts a DWORD version value to the string (x.x.x.x) value.
+function abfVersionToStr(Ver: LongWord): string;
+
+//------------------------------------------------------------------------------
+// Converts a string version value (x.x.x.x) to a DWORD value.
+function abfStrToVersion(const VerStr: string): LongWord;
+
+//------------------------------------------------------------------------------
+// Converts TPoint to the string (X and Y coord separated with ',' ) value
+function abfPointToStr(const P: TPoint): string;
+
+//------------------------------------------------------------------------------
+// Converts string (X and Y coord separated with ',' ) to the TPoint value
+function abfStrToPoint(const S: string): TPoint;
+
+//------------------------------------------------------------------------------
+// Converts TRect to the string (L,T,B,R) value
+function abfRectToStr(const R: TRect): string;
+
+//------------------------------------------------------------------------------
+// Converts string (L,T,B,R) to the TRect value
+function abfStrToRect(const S: string): TRect;
+
+//------------------------------------------------------------------------------
+// Converts string of specified format to the date value.
+function abfStrToDate(S, Format: string): TDateTime;
+
+//------------------------------------------------------------------------------
+// Converts string of specified format to the time value.
+function abfStrToTime(S, Format: string): TDateTime;
+
+//------------------------------------------------------------------------------
+// Converts the binnary data to "FFDDAA00" hex string.
+function abfBinaryToString(var Buffer; Size: Integer): string;
+
+//------------------------------------------------------------------------------
+// Converts "FFDDAA00" hex string to the binnary data. Result is a number of
+// bytes are converted. If some error occurs result is less then 0. Any
+// non-hexadecimal characters are removed from string before the conversion.
+function abfStringToBinary(const S: string; var Buffer; Size: Integer): Integer;
+
+
+//==============================================================================
+// String - TStrings utilities
+//==============================================================================
+
+//------------------------------------------------------------------------------
+// Generates a list of the strings from the S string and append it to the given
+// List. Parts of string should be delimited with Separator char. The List
+// should not be nil.
+// Note: the List will not be cleared before appending!
+procedure abfParseString(S: string; const Separator: string; List: TStrings);
+
+//------------------------------------------------------------------------------
+// Creates a string separated with Separator symbols from items of the given
+// List. Inverse of the abfParseString function.
+function abfUnParseString(List: TStrings; const Separator: string): string;
+
+//------------------------------------------------------------------------------
+// Generates a list of the strings from a given string. Parts of string should
+// be delimited with Separator string. The result list is created in any way.
+function abfStrToList(const Str: string; const Separator: string): TStrings;
+
+//------------------------------------------------------------------------------
+// Opposite to abfStrToList function. Generates a string from the given List.
+function abfListToStr(const List: TStrings; const Separator: string): string;
+
+//------------------------------------------------------------------------------
+// Removes all strings equal to the S string from the string List. Non-case
+// sensitive.
+procedure abfRemoveStringFromList(const S: string; List: TStrings);
+
+
+//==============================================================================
+// Memory, records, pointer utilites
+//==============================================================================
+
+//------------------------------------------------------------------------------
+// Frees an object reference and replaces the reference with nil.
+{$IfNDef D5}
+procedure FreeAndNil(var Obj);
+{$EndIf D5}
+
+//------------------------------------------------------------------------------
+// Fills the record with zeros and set the size value into the first DWORD
+procedure abfInitRecord(var Rec; Size: Integer);
+
+
+//==============================================================================
+// File utilities
+//==============================================================================
+
+const
+  SabfSlash = '\';
+  SabfPathPack = '...';
+  SAppPath: string = ''; // Value will be assigned on initialization
+
+  faNormal       = $00000080; // FILE_ATTRIBUTE_NORMAL              0x00000080
+  faTemporary    = $00000100; // FILE_ATTRIBUTE_TEMPORARY           0x00000100
+  faSparse       = $00000200; // FILE_ATTRIBUTE_SPARSE_FILE         0x00000200
+  faReparsePoint = $00000400; // FILE_ATTRIBUTE_REPARSE_POINT       0x00000400
+  faCompressed   = $00000800; // FILE_ATTRIBUTE_COMPRESSED          0x00000800
+  faOffline      = $00001000; // FILE_ATTRIBUTE_OFFLINE             0x00001000
+  faNotIndexed   = $00002000; // FILE_ATTRIBUTE_NOT_CONTENT_INDEXED 0x00002000
+  faEncrypted    = $00004000; // FILE_ATTRIBUTE_ENCRYPTED           0x00004000
+
+  faAnyFiles     = faAnyFile or faNormal;
+  faOnlyFiles    = faAnyFiles and not (faDirectory or faVolumeID);
+  faDirsAndFiles = faAnyFiles and not (faVolumeID);
+{$IfNDef D3}
+  FOF_NOERRORUI = $0400;
+{$EndIf D3}
+
+type
+  TabfForEachFileCallBack = procedure(const Path: string;
+    const SearchRec: TSearchRec; var Continue: Boolean);
+
+//==============================================================================
+// Name routines
+
+//------------------------------------------------------------------------------
+// Checks is FileName a valid file name string.
+function abfIsValidFileName(const FileName: string): Boolean;
+
+//------------------------------------------------------------------------------
+// Adds a slash to the end of the Path string if it is not present
+function abfAddSlash(const Path: string): string;
+
+//------------------------------------------------------------------------------
+// Adds a slash to the begin of the Path string if it is not present.
+function abfAddSlashBefore(const Path: string): string;
+
+//------------------------------------------------------------------------------
+// Removes a slash from the end of the Path string
+function abfRemoveSlash(const Path: string): string;
+
+//------------------------------------------------------------------------------
+// Replaces all doubled slashes with one slash.
+function abfRemoveExtraSlash(const FileName: string): string;
+
+//------------------------------------------------------------------------------
+// Extracts the name and extension parts of a file name. Same to ExtractFileName
+// but supports '/'.
+function abfExtractFileName(const FileName: string): string;
+
+//------------------------------------------------------------------------------
+// Returns the drive and directory portions of a file name. Same to
+// ExtractFilePath but supports '/'.
+function abfExtractFilePath(const FileName: string): string;
+
+//------------------------------------------------------------------------------
+// Returns the name of the file without extension.
+function abfExtractOnlyFileName(const FileName: string): string;
+
+//------------------------------------------------------------------------------
+// Returns the name given from the FileName and matched the Mask. Supports only
+// simple masks 'C:\AA\*.pas', '?.*', etc. Doesn't support masks such a 'p*.c*'
+// Example:
+//   FileName = 'D:\Copy\autoexec.bat'
+//   Mask = 'C:\*.bak'
+//   Result = 'C:\autoexec.bak' }
+function abfGetFileNameMatchedMask(const FileName, Mask: string): string;
+
+//------------------------------------------------------------------------------
+// Packs given path string to fit the MaxLength.
+// Example: "C:\ABF\...\some.txt"
+function abfPackPathString(const Path: string; MaxLength: Integer): string;
+
+//------------------------------------------------------------------------------
+// Parses command line parameters to string list. Leading '/',  '-' are removed.
+procedure abfCommandLineToStrings(const List: TStrings);
+
+
+//==============================================================================
+// Relative names
+
+//------------------------------------------------------------------------------
+// Concatenates specified RelativePath relative with the given BasePath.
+function abfConcatRelativePath(const BasePath, RelativePath: string): string;
+
+//------------------------------------------------------------------------------
+// Expands relative path from BasePath.
+function abfExpandRelativePathEx(const BasePath, RelativePath: string): string;
+
+//------------------------------------------------------------------------------
+// Expands relative path from the starting folder of the application.
+function abfExpandRelativePath(const RelativePath: string): string;
+
+//------------------------------------------------------------------------------
+// Expands relative path from the curent directory, if path doesn't exists,
+// expands it from the starting folder of the application
+function abfSmartExpandRelativePath(const RelativePath: string): string;
+
+//------------------------------------------------------------------------------
+// Expands relative file name from BasePath.
+function abfExpandRelativeFileNameEx(const BasePath,
+  RelativeFileName: string): string;
+
+//------------------------------------------------------------------------------
+// Expands relative file name from the starting folder of the application
+function abfExpandRelativeFileName(const RelativeFileName: string): string;
+
+//------------------------------------------------------------------------------
+// Expands relative file name from the curent directory, if path doesn't exists,
+// expands file name from the starting folder of the application.
+function abfSmartExpandRelativeFileName(const RelativeFileName: string): string;
+
+
+//==============================================================================
+// Paths, folder managing.
+
+//------------------------------------------------------------------------------
+// Checks directory existing.
+function abfDirectoryExists(const DirName: string): Boolean;
+
+//------------------------------------------------------------------------------
+// Creates all the directories along a directory path if they do not already
+// exist. You can specify an optional CreatedDirList param to receive the list
+// of all created directory names, if you don't need this information set the
+// CreatedDirList parameter to nil.
+procedure abfForceDirectoriesEx(DirName: string; CreatedDirList: TStrings);
+
+//------------------------------------------------------------------------------
+// Creates all the directories along a directory path if they do not already
+// exist.
+procedure abfForceDirectories(DirName: string);
+
+//------------------------------------------------------------------------------
+// Retrieves the path of the Windows directory.
+function abfGetWindowsDir: string;
+
+//------------------------------------------------------------------------------
+// Retrieves the path of the Windows system directory.
+function abfGetSystemDir: string;
+
+//------------------------------------------------------------------------------
+// Retrieves the path of the "Program Files" directory.
+function abfGetProgramFilesDir: string;
+
+//------------------------------------------------------------------------------
+// Retrieves the path of the TEMP directory.
+function abfGetTempDir: string;
+
+//------------------------------------------------------------------------------
+// Returns an unique name for the temporary file.
+function abfGetUniqueTempFileName(const Prefix: string): string;
+
+
+
+//==============================================================================
+// File managing.
+
+//------------------------------------------------------------------------------
+// Use this function to get a size of the file specified by the FileName
+// parameter. If function returns True the FileSize parameter contains the size
+// of file (in bytes). If function returns False - some error occurred and the
+// FileSize parameter contains a wrong information. Use GetLastError API
+// function to determine the error.
+// Note: Function works with files less then 4 Gb.
+function abfGetFileSize(const FileName: string;
+  var FileSize: LongWord): Boolean;
+
+//------------------------------------------------------------------------------
+// Copies the SrcFile file to the DestFile file.
+function abfCopyFile(const SrcFile, DstFile: string): Boolean;
+
+//------------------------------------------------------------------------------
+// Copies the SrcFile file to the DestFile file block by block. The BlockSize
+// parameter specifies a size of copying block. If you specify BlockSize as 0 -
+// CabfCopyFileExBlockSize bytes blocks will be used. Use OnProgress to specify
+// an event that will be called with Sender parameter after the copying of each
+// block. You can terminate procedure routine by setting Terminate parameter of
+// the OnProgress event True. If function returns False - some error occurred
+// and file wasn't copyed properly. Use GetLastError API function to determine
+// the error.
+const
+  CabfCopyFileExBlockSize = 65536;
+
+type
+  TabfCopyFileProgressEvent = procedure(Sender: TObject;
+    CopiedSize, TotalSize: LongWord; var Terminate: Boolean);
+
+function abfCopyFileEx(const SrcFile, DstFile: string; BlockSize: LongWord;
+  OnProgress: TabfCopyFileProgressEvent; Sender: TObject): Boolean;
+
+//------------------------------------------------------------------------------
+// Runs/Executes file with possibility of waiting the end of the file execution.
+procedure abfRunEx(const FileName: string; Wait: Boolean);
+
+//------------------------------------------------------------------------------
+// Runs/Executes file.
+procedure abfRun(const FileName: string);
+
+//------------------------------------------------------------------------------
+// Removes file in any way. If the file are locked by the system, it will be
+// deleted at once it become unlocked.
+procedure abfRemoveFile(const FileName: string);
+
+
+//------------------------------------------------------------------------------
+// Replaces DstName with SrcName file in any way. If the file DstName are locked
+// by the system, it will be replaced at once it become unlocked.
+procedure abfReplaceFile(const SrcName, DstName: string);
+
+//------------------------------------------------------------------------------
+// Replaces DstName with SrcName file in any way. If the file DstName are locked
+// by the system, it will be replaced at once it become unlocked. After the
+// replacing runs the file with CmdLnParams.
+procedure abfReplaceFileAndRun(const SrcName, DstName, CmdLnParams: string);
+
+//------------------------------------------------------------------------------
+// Process CallBack procedure for each files matched the PathWithMask and given
+// attributes.
+function abfForEachFile(const PathWithMask: string; FileAttr: Integer;
+  ProcessSubFolders: Boolean; CallBack: TabfForEachFileCallBack): Integer;
+
+//------------------------------------------------------------------------------
+// Converts a TDateTime value to the TFileTime value.
+function abfDateTimeToFileTime(DateTime: TDateTime): TFileTime;
+
+//------------------------------------------------------------------------------
+// Converts a TFileTime value to the TDateTime value.
+function abfFileTimeToDateTime(FileTime: TFileTime): TDateTime;
+
+//------------------------------------------------------------------------------
+// Modifies attributes of a specified file.
+procedure abfModifyFileAttr(const FileName: string; RemoveAttr,
+  AddAttr: Integer);
+
+//------------------------------------------------------------------------------
+// Returns date and time for the specified file
+function abfGetFileDateTime(const FileName: string): TDateTime;
+
+//------------------------------------------------------------------------------
+// Sets date and time for the specified file
+procedure abfSetFileDateTime(const FileName: string; const DateTime: TDateTime);
+
+//------------------------------------------------------------------------------
+// Returns the date/time that the specified file was last accessed.
+function abfGetFileLastAccess(const FileName: string): TDateTime;
+
+//------------------------------------------------------------------------------
+// Returns the date/time that the specified file was created.
+function abfGetFileCreation(const FileName: string): TDateTime;
+
+//------------------------------------------------------------------------------
+// Returns the date/time that the specified file was last written to.
+function abfGetFileLastWrite(const FileName: string): TDateTime;
+
+//------------------------------------------------------------------------------
+// Sets the specified file's last-access timestamp
+function abfSetFileLastAccess(const FileName: string;
+  const DateTime: TDateTime): Boolean;
+
+//------------------------------------------------------------------------------
+// Sets the specified file's creation timestamp
+function abfSetFileCreation(const FileName: string;
+  const DateTime: TDateTime): Boolean;
+
+//------------------------------------------------------------------------------
+// Sets the specified file's last-write timestamp
+function abfSetFileLastWrite(const FileName: string;
+  const DateTime: TDateTime): Boolean;
+
+//------------------------------------------------------------------------------
+// Returns a build's date and time of the specified application. Based on
+// Alexander Kramarenko's <www.akhome.da.ru> routines.
+// Note: Normally works only with files created by Borland compilers.
+function abfGetFileBuildDateTime(FileName: string;
+  var BuildTime: TDateTime): Boolean;
+
+
+//==============================================================================
+// Specialized routines
+
+//------------------------------------------------------------------------------
+// Creates *.int files for SrcFile and place it at DstPath, if the
+// "implementation"

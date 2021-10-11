@@ -1,0 +1,305 @@
+{*******************************************************************************
+
+  ABF Visual Components Library
+
+  Copyright (c) 2000-2005 ABF software, Inc.
+  All Rights Reserved.
+
+  e-mail: info@abf-dev.com
+  web:    http://www.abf-dev.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+  RESTRICTIONS
+
+  THE SOURCE CODE CONTAINED WITHIN THIS FILE AND ALL RELATED FILES OR ANY
+PORTION OF ITS CONTENTS SHALL AT NO TIME BE COPIED, TRANSFERRED, SOLD,
+DISTRIBUTED, OR OTHERWISE MADE AVAILABLE TO OTHER INDIVIDUALS WITHOUT EXPRESS
+WRITTEN CONSENT AND PERMISSION FROM THE ABF SOFTWARE, INC.
+
+  CONSULT THE END USER LICENSE AGREEMENT (EULA) FOR INFORMATION ON ADDITIONAL
+RESTRICTIONS.
+
+*******************************************************************************}
+unit abfLabels;
+
+{$I abf.inc}
+
+interface
+
+uses
+  Windows, Messages, Classes, Graphics, Controls, SysUtils, StdCtrls, Forms,
+  abfClasses, abfPropertyDesc;
+
+{$IfNDef D3}
+const
+  crHandPoint = crUpArrow;
+{$EndIf D3}
+
+type
+
+//==============================================================================
+// TabfCustomLabel
+//==============================================================================
+// A prototype of all abfXXX labels. Provides a mouse enter/leave support. Can
+// draw text on the angle.
+
+  TabfCustomLabel = class(TCustomLabel)
+  private
+    FAbout: string;
+    FAngle: Integer;
+    FOnMouseLeave: TNotifyEvent;
+    FOnMouseEnter: TNotifyEvent;
+  // Messages routine
+    procedure CMMouseEnter(var Message: TMessage); message CM_MOUSEENTER;
+    procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
+  protected
+    FMouseInControl: Boolean;
+    FAngleFont: HFONT;
+    FTextPosition: TPoint;
+    procedure Loaded; override;
+    procedure DoMouseEnter; dynamic;
+    procedure DoMouseLeave; dynamic;
+    procedure InvalidateWithAdjusting; virtual;
+    procedure ReCreateFont; virtual;
+    procedure CalcRect(var ARect: TRect); virtual;
+    procedure CalcRectByText(var ARect: TRect); virtual;
+    procedure DoDrawText(var ARect: TRect;
+      AFlags: Integer);{$IfDef D4}override;{$Else}virtual;{$EndIf}
+  {$IfNDef D4}
+    procedure AdjustBounds; virtual;
+    procedure Paint; override;
+  {$EndIf D4}
+  // Properties Get/Set
+    procedure SetAngle(Value: Integer); virtual;
+  // Properties
+    property About: string read FAbout write FAbout stored False;
+    property ParentFont default False;
+    property TextPosition: TPoint read FTextPosition;
+  // Events
+    property OnMouseEnter: TNotifyEvent read FOnMouseEnter write FOnMouseEnter;
+    property OnMouseLeave: TNotifyEvent read FOnMouseLeave write FOnMouseLeave;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  // Properties
+    property Angle: Integer read FAngle write SetAngle default 0;
+    property MouseInControl: Boolean read FMouseInControl;
+  end;{TabfCustomLabel = class(TCustomLabel)}
+
+
+//==============================================================================
+// TabfLabel
+//==============================================================================
+// Enhanced label. Provides a mouse enter/leave support. Can draw text on the
+// angle.
+
+  TabfLabel = class(TabfCustomLabel)
+  public
+    property TextPosition;
+  published
+  // Properties
+    property About;
+    property Align;
+    property Alignment;
+    property Angle;
+    property AutoSize;
+    property Caption;
+    property Color;
+    property Cursor;
+    property DragCursor;
+    property Enabled;
+    property FocusControl;
+    property Font;
+    property ParentFont;
+    property ParentShowHint;
+    property PopupMenu;
+    property ShowAccelChar;
+    property ShowHint;
+    property Transparent;
+    property Visible;
+    property WordWrap;
+{$IfDef D3}
+    property Layout;
+{$EndIf D3}
+{$IfDef D4}
+    property Anchors;
+    property BiDiMode;
+    property Constraints;
+    property DragKind;
+    property DragMode;
+    property ParentBiDiMode;
+{$EndIf D4}
+  // Events
+    property OnClick;
+    property OnDblClick;
+    property OnDragDrop;
+    property OnDragOver;
+    property OnEndDrag;
+    property OnMouseDown;
+    property OnMouseMove;
+    property OnMouseEnter;
+    property OnMouseLeave;
+    property OnMouseUp;
+    property OnStartDrag;
+{$IfDef D4}
+    property OnStartDock;
+    property OnEndDock;
+{$EndIf D4}
+  end;{TabfLabel = class(TabfCustomLabel)}
+
+
+//==============================================================================
+// TabfCustomActiveLabel
+//==============================================================================
+// A prototype of the labels that can be active at the run-time.
+
+  TabfActiveLabelColors  = class(TabfRunTimeColorDesc);
+  TabfActiveLabelCursors = class(TabfRunTimeCursorDesc);
+  TabfActiveLabelColorDecorations = class(TabfRunTimeColorDecorationDesc);
+  TabfActiveLabelTextDecorations  = class(TabfRunTimeTextDecorationDesc);
+
+  TabfCustomActiveLabel = class(TabfCustomLabel)
+  private
+    FRunTimeState: TabfRunTimeState;
+    FPressed: Boolean;
+    FActive: Boolean;
+    FAutoSize: Boolean;
+    FEnabled: Boolean;
+    FBorders: TabfActiveLabelColorDecorations;
+    FShadows: TabfActiveLabelColorDecorations;
+    FCursors: TabfActiveLabelCursors;
+    FTextDecorations: TabfActiveLabelTextDecorations;
+    FColors: TabfActiveLabelColors;
+  // Misc
+    procedure PropertyDescInit;
+    procedure PropertyDescDone;
+  // Messages routine
+    procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
+    procedure CMSysColorChange(var Message: TMessage); message CM_SYSCOLORCHANGE;
+    procedure CMTextChanged(var Message: TMessage); message CM_TEXTCHANGED;
+    procedure CMWinIniChange(var Message: TWMWinIniChange); message CM_WININICHANGE;
+    procedure WMMouseMove  (var Message: TWMMouseMove); message WM_MOUSEMOVE;
+    procedure WMLButtonDown(var Message: TMessage); message WM_LBUTTONDOWN;
+    procedure WMLButtonUp  (var Message: TMessage); message WM_LBUTTONUP;
+  protected
+    FBitmapBuffer: TBitmap;
+    procedure Loaded; override;
+  // Drawing
+    procedure Paint; override;
+    procedure DrawToBuffer; virtual;
+  // Updating
+    procedure UpdateRunTimeState; virtual;
+    procedure UpdateStateProperies; virtual;
+  // TextOut routines
+    procedure AdjustBounds; override;
+    procedure CalcRectByText(var ARect: TRect); override;
+    procedure DoDrawText(var ARect: TRect; AFlags: Integer); override;
+    procedure InternalDrawText(const ACanvas: TCanvas; const AText: string;
+      var ARect: TRect; AFlags: Integer); virtual;
+  // Event handlers
+    procedure DoMouseEnter; override;
+    procedure DoMouseLeave; override;
+  // Properties Get/Set
+    procedure SetRuntimeState(A: TabfRuntimeState); virtual;
+    procedure SetActive(A: Boolean); virtual;
+    procedure SetAutoSize(A: Boolean); override;
+    function  GetEnabled: Boolean;{$IfDef D4}override;{$Else}virtual;{$EndIf}
+    procedure SetEnabled(A: Boolean);{$IfDef D4}override;{$Else}virtual;{$EndIf}
+    procedure SetBorders(const A: TabfActiveLabelColorDecorations); virtual;
+    procedure SetColors(const A: TabfActiveLabelColors); virtual;
+    procedure SetCursors(const A: TabfActiveLabelCursors); virtual;
+    procedure SetTextDecorations(const A: TabfActiveLabelTextDecorations); virtual;
+    procedure SetShadows(const A: TabfActiveLabelColorDecorations); virtual;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure Update; override;
+  // Properties
+    property Active: Boolean read FActive write SetActive default True;
+    property AutoSize: Boolean read FAutoSize write SetAutoSize default True;
+    property Enabled: Boolean read GetEnabled write SetEnabled default True;
+    property Borders: TabfActiveLabelColorDecorations read FBorders
+      write SetBorders;
+    property Colors: TabfActiveLabelColors read FColors write SetColors;
+    property Cursors: TabfActiveLabelCursors read FCursors write SetCursors;
+    property RuntimeState: TabfRuntimeState read FRuntimeState
+      write SetRuntimeState default rtsNormal;
+    property Pressed: Boolean read FPressed;
+    property Shadows: TabfActiveLabelColorDecorations read FShadows
+      write SetShadows;
+    property TextDecorations: TabfActiveLabelTextDecorations
+      read FTextDecorations write SetTextDecorations;
+  end;{TabfCustomActiveLabel = Class(TCustomLabel)}
+
+
+//==============================================================================
+// TabfActiveLabel
+//==============================================================================
+// TabfActiveLabel is a label that can be active at run-time, provides a mouse
+// enter/leave support and contains some visual extensions.
+
+  TabfActiveLabel = class(TabfCustomActiveLabel)
+  published
+  // Properties
+    property About;
+    property Active;
+    property Align;
+    property Alignment;
+{ TODO -oKARPOLAN : Add angle support... }
+//    property Angle;
+    property AutoSize;
+    property Borders;
+    property Caption;
+    property Colors;
+    property Cursors;
+    property DragCursor;
+    property Enabled;
+    property FocusControl;
+    property Font;
+    property ParentFont;
+    property ParentShowHint;
+    property PopupMenu;
+    property RuntimeState;
+    property ShowAccelChar;
+    property ShowHint;
+    property Shadows;
+    property TextDecorations;
+    property Transparent;
+    property Visible;
+    property WordWrap;
+{$IfDef D3}
+    property Layout;
+{$EndIf D3}
+{$IfDef D4}
+    property Anchors;
+    property BiDiMode;
+    property Constraints;
+    property DragKind;
+    property DragMode;
+    property ParentBiDiMode;
+{$EndIf D4}
+  // Events
+    property OnClick;
+    property OnDblClick;
+    property OnDragDrop;
+    property OnDragOver;
+    property OnEndDrag;
+    property OnMouseDown;
+    property OnMouseMove;
+    property OnMouseEnter;
+    property OnMouseLeave;
+    property OnMouseUp;
+    property OnStartDrag;
+{$IfDef D4}
+    property OnStartDock;
+    property OnEndDock;
+{$EndIf D4}
+  end;{TabfActiveLabel = class(TabfCustomActiveLabel)}
+
+{******************************************************************************}
+implementation

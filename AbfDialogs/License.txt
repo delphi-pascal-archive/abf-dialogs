@@ -1,0 +1,25 @@
+License Agreement
+=================
+You should carefully read the following terms and conditions before using the software. By using this software you indicate that you accept the present license agreement.
+
+Registered Version
+==================
+One registered copy of this software may either be used by a single developer who uses the software personally on one or more computers, or installed on a single workstation used not simultaneously by multiple developers, but not both.
+
+Shareware Version
+==================
+You may use Shareware version for 30 days (TRIAL period). After that period has ended, to continue using this product you have to purchase the Registered version.
+
+Distribution
+============
+Provided that you verify that you are distributing the Shareware version you are hereby licensed to make as many copies of the Shareware version of the software and the documentation as you wish; give exact copies of the original Shareware version to anyone; and distribute the Shareware version of the software and the documentation in its unmodified form via electronic means. There is no charge for any of the above-mentioned actions.
+
+You are prohibited from charging, or requesting donations, for any such copies, however made; and from distributing the software and/or the documentation with other products (commercial or otherwise) without a prior written permission from ABF software, Inc.
+
+DISCLAIMER
+==========
+THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS WITHOUT WARRANTY OF ANY KIND, EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. THE PERSON USING THE SOFTWARE BEARS ALL RISK AS TO THE QUALITY AND PERFORMANCE OF THE SOFTWARE. THE AUTHOR WILL NOT BE LIABLE FOR ANY SPECIAL, INCIDENTAL, CONSEQUENTIAL, INDIRECT OR SIMILAR DAMAGES DUE TO LOSS OF DATA OR ANY OTHER REASON, EVEN IF THE AUTHOR OR AN AGENT OF THE AUTHOR HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. IN NO EVENT SHALL THE AUTHOR'S LIABILITY FOR ANY DAMAGES EVER EXCEED THE PRICE PAID FOR THE LICENSE TO USE THE SOFTWARE, REGARDLESS OF THE FORM OF THE CLAIM.
+
+
+  Copyright (c) 2000-2002 ABF software, Inc.
+  All rights reserved.

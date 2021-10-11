@@ -1,0 +1,295 @@
+{*******************************************************************************
+
+  ABF Visual Components Library
+
+  Copyright (c) 2000-2005 ABF software, Inc.
+  All Rights Reserved.
+
+  e-mail: info@abf-dev.com
+  web:    http://www.abf-dev.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+  RESTRICTIONS
+
+  THE SOURCE CODE CONTAINED WITHIN THIS FILE AND ALL RELATED FILES OR ANY
+PORTION OF ITS CONTENTS SHALL AT NO TIME BE COPIED, TRANSFERRED, SOLD,
+DISTRIBUTED, OR OTHERWISE MADE AVAILABLE TO OTHER INDIVIDUALS WITHOUT EXPRESS
+WRITTEN CONSENT AND PERMISSION FROM THE ABF SOFTWARE, INC.
+
+  CONSULT THE END USER LICENSE AGREEMENT (EULA) FOR INFORMATION ON ADDITIONAL
+RESTRICTIONS.
+
+*******************************************************************************}
+unit abfTypInfo;
+
+{$I abf.inc}
+
+interface
+
+uses
+{$IfDef D6}
+  Variants, RTLConsts,
+{$EndIf D6}  
+  TypInfo, Classes, SysUtils;
+
+{$IfNDef D5}
+  {$IfNDef D3}
+const
+  {$Else D3}
+resourcestring
+  {$EndIf D3}
+  SInvalidPropertyValue = 'Invalid property value';
+  SInvalidPropertyPath = 'Invalid property path';
+  SInvalidPropertyType = 'Invalid property type: %s';
+  SInvalidPropertyElement = 'Invalid property element: %s';
+
+type
+  EPropertyConvertError = class(Exception);
+{$EndIf D5}
+
+
+//==============================================================================
+// TypeInfo routines
+//==============================================================================
+
+//------------------------------------------------------------------------------
+// Returns the property information record. Supports complex property names.
+// Example:
+//   PropName = 'Font'
+//   PropName = 'Font.Style'
+//   PropName = 'Font.Style.fsUnderline'
+function abfGetPropInfo(TypeInfo: PTypeInfo; const PropName: string): PPropInfo;
+
+//------------------------------------------------------------------------------
+// Returns a list of value names for a given type.
+procedure abfGetTypeInfoValueNames(TypeInfo: PTypeInfo; ValueNames: TStrings);
+
+//------------------------------------------------------------------------------
+// Returns a list of value names for a given enumerate type.
+procedure abfGetEnumTypeValueNames(TypeInfo: PTypeInfo; ValueNames: TStrings);
+
+//------------------------------------------------------------------------------
+// Returns a list of value names for a given set type.
+procedure abfGetSetTypeValueNames(TypeInfo: PTypeInfo; ValueNames: TStrings);
+
+
+//==============================================================================
+// PropInfo routines
+//==============================================================================
+
+//------------------------------------------------------------------------------
+// Returns a TypeInfo for the specified PropInfo.
+function abfGetTypeInfo(PropInfo: PPropInfo): PTypeInfo;
+
+//------------------------------------------------------------------------------
+// Returns a TypeData for the specified PropInfo.
+function abfGetTypeData(PropInfo: PPropInfo): PTypeData;
+
+//------------------------------------------------------------------------------
+// Calculates the size of the given PropInfo property of the Instance object.
+function abfGetPropInfoValueSize(Instance: TObject;
+  PropInfo: PPropInfo): Integer;
+
+//------------------------------------------------------------------------------
+// Returns the value of the PropInfo property of the Instance object.
+function abfGetPropValue(Instance: TObject; PropInfo: PPropInfo): Variant;
+
+//------------------------------------------------------------------------------
+// Sets the value of the PropInfo property of the Instance object.
+procedure abfSetPropValue(Instance: TObject; PropInfo: PPropInfo;
+  const Value: Variant);
+
+//------------------------------------------------------------------------------
+// Returns a value of the enumerated PropInfo property of the Instance object.
+function GetEnumProp(Instance: TObject; PropInfo: PPropInfo): string;
+
+//------------------------------------------------------------------------------
+// Sets a value of the enumerated PropInfo property of the Instance object.
+procedure abfSetEnumProp(Instance: TObject; PropInfo: PPropInfo;
+  const Value: string);
+
+//==============================================================================
+// Properties of set type routines.
+
+//------------------------------------------------------------------------------
+// Sets a value of the set type PropInfo property of the Instance object.
+procedure abfSetSetProp(Instance: TObject; PropInfo: PPropInfo;
+  const Value: string);
+
+//------------------------------------------------------------------------------
+// Returns lists of included and excluded values of the set type PropInfo
+// property of the Instance object. Results are stored in Included and Excluded
+// lists. You can specify Included or Excluded parameters as nil if you don't
+// need an information about one of them.
+// Example:
+//   SomeObject.SomeProperty: (smFirst, smThird, smFourth, smFifth, smSixth);
+//
+//   SomeObject.SomeProperty = [smFirst, smThird, smSixth];
+//
+//   Included[0] = 'smFirst'
+//   Included[1] = 'smThird'
+//   Included[2] = 'smLast'
+//
+//   Excluded[0] = 'smFourth'
+//   Excluded[1] = 'smFifth'
+procedure abfGetSetPropValueLists(Instance: TObject; PropInfo: PPropInfo;
+  const Included, Excluded: TStrings);
+
+//------------------------------------------------------------------------------
+// Sets value of the set type PropInfo property of the Instance object.
+// All elements are present in the Values list will be included,
+// not present - excluded.
+// Example:
+//   Values[0] = 'smFirst'
+//   Values[1] = 'smThird'
+//   Values[2] = 'smSixth'
+//   SomeObject.SomeProperty = [smFirst, smThird, smSixth];
+procedure abfSetSetPropValues(Instance: TObject; PropInfo: PPropInfo;
+  const Values: TStrings);
+
+//------------------------------------------------------------------------------
+// Returns a list of included elements of the set type PropInfo property of the
+// Instance object.
+// Example:
+//   SomeObject.SomeProperty = [smFirst, smThird, smSixth];
+//   AValues[0] = 'smFirst'
+//   AValues[1] = 'smThird'
+//   AValues[2] = 'smSixth'
+procedure abfGetSetPropValues(Instance: TObject; PropInfo: PPropInfo;
+  Values: TStrings);
+
+//------------------------------------------------------------------------------
+// Returms a state of the ElementName element in the PropInfo property of
+// the Instance object. Returns True if an element is included in the set,
+// otherwise returns False.
+function abfGetSetPropElement(Instance: TObject; PropInfo: PPropInfo;
+  const ElementName: string): Boolean;
+
+//------------------------------------------------------------------------------
+// Include or excludes the ElementName element in the PropInfo property of the
+// Instance object. To include an element set Value True, to exclude - set
+// Value False.
+procedure abfSetSetPropElement(Instance: TObject; PropInfo: PPropInfo;
+  const ElementName: string; Value: Boolean);
+
+
+//==============================================================================
+// Copy properties routines
+//==============================================================================
+
+//------------------------------------------------------------------------------
+// Copies the value from one property to another. Src and SrcInfo specify the
+// source property. Dst and DstInfo specify the destination property.
+procedure abfCopyProp(Src, Dst: TObject; SrcInfo, DstInfo: PPropInfo);
+
+//------------------------------------------------------------------------------
+// Copies published PropName property from the Src object to the Dst object.
+// Note: use this function carefully, it works only with published properties.
+procedure abfCopyProperty(Src, Dst: TObject; const PropName: string);
+
+//------------------------------------------------------------------------------
+// Copies specified published properties from the Src object to the Dst object.
+// Note: use this function carefully, it works only with published properties.
+procedure abfCopyProperties(Src, Dst: TObject; PropNames: TStrings);
+  {$IfDef D4}overload;{$EndIf D4}
+
+{$IfDef D4}
+//------------------------------------------------------------------------------
+// Copies specified published properties from the Src object to the Dst object.
+// Note: use this function carefully, it works only with published properties.
+procedure abfCopyProperties(Src, Dst: TObject;
+  const PropNames: array of string); overload;
+{$EndIf D4}
+
+//------------------------------------------------------------------------------
+// Copies all published properties from the Src object to the Dst object.
+// ExcludeList determines list of property names that should not be copied.
+// ExcludeList can be nil.
+// Note: use this function carefully, it copies only published properties.
+procedure abfCopyAllPropertiesEx(Src, Dst: TObject; ExcludeList: TStrings);
+
+//------------------------------------------------------------------------------
+// Copies all published properties from the Src object to the Dst object.
+// Note: use this function carefully, it copies only published properties.
+procedure abfCopyAllProperties(Src, Dst: TObject);
+
+//------------------------------------------------------------------------------
+// Assigns properties of the Instance object using the string list data.
+// The format of string list items should be: "PropertyName=PropertyValue".
+// Property is skipped if the name or value is undefined or empty.
+procedure abfAssignPropertiesFromStrings(Instance: TObject; S: TStrings);
+
+
+//==============================================================================
+// Misc
+//==============================================================================
+
+//------------------------------------------------------------------------------
+// Returns a list of property names are contained in the Instance object.
+// Relurned names are stored in the Properties list. The PropInfo inforamation
+// of each property is stored in corresponding Properties.Objects[x] (Use
+// PPropInfo(Properties.Objects[x]) to access it). You can select what kind of
+// properties should be returned using the Kinds parameter. Set Kinds
+// empty [] to receive property names of any kind. Use IncludeStored and
+// IncludeNotStored parameters to apply additional restrictions.
+procedure abfGetPropertyListEx(Instance: TObject; Properties: TStrings;
+  Kinds: TTypeKinds; IncludeStored, IncludeNotStored: Boolean);
+
+//------------------------------------------------------------------------------
+// Returns a list of property names are contained in the Instance object.
+// Relurned names are stored in the Properties list. The PropInfo inforamation
+// of each property is stored in corresponding Properties.Objects[x] (Use
+// PPropInfo(Properties.Objects[x]) to access it).
+procedure abfGetPropertyList(Instance: TObject; Properties: TStrings);
+
+//------------------------------------------------------------------------------
+// Converts value of the set type to the string.
+function abfSetToString(PropInfo: PPropInfo; Value: Integer;
+  Brackets: Boolean): string;
+
+//------------------------------------------------------------------------------
+// Converts string value to the set type.
+function abfStringToSet(PropInfo: PPropInfo; const Value: string): Integer;
+
+//------------------------------------------------------------------------------
+// Returns the size (in bytes) of the given OrdType.
+function abfGetOrdSize(OrdType: TOrdType): Integer;
+
+//------------------------------------------------------------------------------
+// Returns the size (in bytes) of the given FloatType.
+function abfGetFloatSize(FloatType: TFloatType): Integer;
+
+//------------------------------------------------------------------------------
+// Fixes complex PropName by removing spaces; leading, trailing and doubled
+// dots.
+function abfFixComplexPropertyName(const PropName: string): string;
+
+//------------------------------------------------------------------------------
+// Parses complex PropName.
+// Example:
+//   PropName='Form.Edit1.Font'
+//   CurrPropName='Form'
+//   NextPropName='Edit1.Font'
+procedure abfParseComplexPropertyName(const PropName: string; var CurrPropName,
+  NextPropName: string);
+
+//------------------------------------------------------------------------------
+// Retutns a list of all possible values for Boolean property.
+procedure abfGetBooleanPropValueNames(ValueNames: TStrings);
+
+//------------------------------------------------------------------------------
+// Determines does the PropName property exist in the Instance object.
+function abfPropertyExists(Instance: TObject; const PropName: string): Boolean;
+
+//------------------------------------------------------------------------------
+// Determines is the PropName property of the Instance object ReadOnly.
+function abfIsPropertyReadOnly(Instance: TObject;
+  const PropName: string): Boolean;
+
+{******************************************************************************}
+implementation

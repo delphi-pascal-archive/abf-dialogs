@@ -1,0 +1,350 @@
+{*******************************************************************************
+
+  ABF Visual Components Library
+
+  Copyright (c) 2000-2005 ABF software, Inc.
+  All Rights Reserved.
+
+  e-mail: info@abf-dev.com
+  web:    http://www.abf-dev.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+  RESTRICTIONS
+
+  THE SOURCE CODE CONTAINED WITHIN THIS FILE AND ALL RELATED FILES OR ANY
+PORTION OF ITS CONTENTS SHALL AT NO TIME BE COPIED, TRANSFERRED, SOLD,
+DISTRIBUTED, OR OTHERWISE MADE AVAILABLE TO OTHER INDIVIDUALS WITHOUT EXPRESS
+WRITTEN CONSENT AND PERMISSION FROM THE ABF SOFTWARE, INC.
+
+  CONSULT THE END USER LICENSE AGREEMENT (EULA) FOR INFORMATION ON ADDITIONAL
+RESTRICTIONS.
+
+*******************************************************************************}
+unit abfAPM;
+
+{$I abf.inc}
+
+interface
+
+uses
+  Windows, Consts, Classes, Controls, Messages,
+  abfClasses, abfComponents, abfAPMUtils;
+
+type
+
+//==============================================================================
+// TabfAPMManager
+//==============================================================================
+// TabfAPMManager is a non-visual component that allows control the system
+// power behaviours. Contains information about power supply, battery lifetime
+// and other APM statistics and information. Allows suspending and resuming of
+// the system or blocking of these features. Provides easy access to the APM
+// functionality.
+
+  TabfPowerCapabilities = class(TPersistent)
+  private
+    FPC: TSystemPowerCapabilities;
+    function GetBooleanValue(Index: Integer): Boolean;
+    function GetByteValue(Index: Integer): Byte;
+    function GetSystemPowerStateValue(Index: Integer): TSystemPowerState;
+    procedure SetBooleanValue(Index: Integer; Value: Boolean);
+    procedure SetByteValue(Index: Integer; Value: Byte);
+    procedure SetSystemPowerStateValue(Index: Integer; Value: TSystemPowerState);
+  public
+    constructor Create;
+    procedure Refresh; virtual;
+  published
+    property PowerButtonPresent: Boolean index 0 read GetBooleanValue
+      write SetBooleanValue stored False;
+    property SleepButtonPresent: Boolean index 1 read GetBooleanValue
+      write SetBooleanValue stored False;
+    property LidPresent: Boolean index 2 read GetBooleanValue
+      write SetBooleanValue stored False;
+    property SystemS1: Boolean index 3 read GetBooleanValue
+      write SetBooleanValue stored False;
+    property SystemS2: Boolean index 4 read GetBooleanValue
+      write SetBooleanValue stored False;
+    property SystemS3: Boolean index 5 read GetBooleanValue
+      write SetBooleanValue stored False;
+    property SystemS4: Boolean index 6 read GetBooleanValue
+      write SetBooleanValue stored False;
+    property SystemS5: Boolean index 7 read GetBooleanValue
+      write SetBooleanValue stored False;
+    property HiberFilePresent: Boolean index 8 read GetBooleanValue
+      write SetBooleanValue stored False;
+    property FullWake: Boolean index 9 read GetBooleanValue
+      write SetBooleanValue stored False;
+    property VideoDimPresent: Boolean index 10 read GetBooleanValue
+      write SetBooleanValue stored False;
+    property ApmPresent: Boolean index 11 read GetBooleanValue
+      write SetBooleanValue stored False;
+    property UpsPresent: Boolean index 12 read GetBooleanValue
+      write SetBooleanValue stored False;
+    property ThermalControl: Boolean index 13 read GetBooleanValue
+      write SetBooleanValue stored False;
+    property ProcessorThrottle: Boolean index 14 read GetBooleanValue
+      write SetBooleanValue stored False;
+    property ProcessorMinThrottle: Byte index 0 read GetByteValue
+      write SetByteValue stored False;
+    property ProcessorMaxThrottle: Byte index 1 read GetByteValue
+      write SetByteValue stored False;
+    property DiskSpinDown: Boolean index 15 read GetBooleanValue
+      write SetBooleanValue stored False;
+    property SystemBatteriesPresent: Boolean index 16 read GetBooleanValue
+      write SetBooleanValue stored False;
+    property BatteriesAreShortTerm: Boolean index 17 read GetBooleanValue
+      write SetBooleanValue stored False;
+    property AcOnLineWake: TSystemPowerState index 0 read GetSystemPowerStateValue
+      write SetSystemPowerStateValue stored False;
+    property SoftLidWake: TSystemPowerState index 1 read GetSystemPowerStateValue
+      write SetSystemPowerStateValue stored False;
+    property RtcWake: TSystemPowerState index 2 read GetSystemPowerStateValue
+      write SetSystemPowerStateValue stored False;
+  end;
+
+  TabfSystemBatteryState = class(TPersistent)
+  private
+    FSBS: TSystemBatteryState;
+    function GetBooleanValue(Index: Integer): Boolean;
+    function GetCardinalValue(Index: Integer): Cardinal;
+    procedure SetBooleanValue(Index: Integer; Value: Boolean);
+    procedure SetCardinalValue(Index: Integer; Value: Cardinal);
+  public
+    constructor Create;
+    procedure Refresh; virtual;
+  published
+    property AcOnLine: Boolean index 0 read GetBooleanValue
+      write SetBooleanValue stored False;
+    property BatteryPresent: Boolean index 1 read GetBooleanValue
+      write SetBooleanValue stored False;
+    property Charging: Boolean index 2 read GetBooleanValue
+      write SetBooleanValue stored False;
+    property Discharging: Boolean index 3 read GetBooleanValue
+      write SetBooleanValue stored False;
+    property MaxCapacity: Cardinal index 0 read GetCardinalValue
+      write SetCardinalValue stored False;
+    property RemainingCapacity: Cardinal index 1 read GetCardinalValue
+      write SetCardinalValue stored False;
+    property Rate: Cardinal index 2 read GetCardinalValue
+      write SetCardinalValue stored False;
+    property EstimatedTime: Cardinal index 3 read GetCardinalValue
+      write SetCardinalValue stored False;
+  end;
+
+  TabfACLineStatus = (lsOffline, lsOnline, lsBackupPower, lsUnknown);
+
+  TabfBatteryFlag = (bfHigh, bfLow, bfCritical, bfCharging, bfNoBattery,
+    bfUnknown);
+
+  TabfAPMManagerBlockingMode = (amSystemActivity, amDisplayActivity,
+    amUserPresent);
+  TabfAPMManagerBlockingModes = set of TabfAPMManagerBlockingMode;
+
+  TabfQuerySuspendEvent = procedure(Sender: TObject;
+    var CanSuspend : Boolean) of object;
+
+  TabfAPMManager = class(TabfComponent)
+  private
+    FWndProcHook: TabfCustomWndProcHook;
+    FBlockingModes: TabfAPMManagerBlockingModes;
+    FEnabled: Boolean;
+    FPowerCapabilities: TabfPowerCapabilities;
+    FOnBatteryLow: TNotifyEvent;
+    FOnPowerStatusChange: TNotifyEvent;
+    FOnQuerySuspend: TabfQuerySuspendEvent;
+    FOnQuerySuspendFailed: TNotifyEvent;
+    FOnResume: TNotifyEvent;
+    FOnSuspend: TNotifyEvent;
+    FSystemBatteryState: TabfSystemBatteryState;
+    FSystemPowerStatus: TSystemPowerStatus;
+    function GetACLineStatus: TabfACLineStatus;
+    function GetBatteryFlag: TabfBatteryFlag;
+    function GetBatteryFullLifeTime: Integer;
+    function GetBatteryLifePercent: ShortInt;
+    function GetBatteryLifeTime: Integer;
+    function GetBlockingModes: TabfAPMManagerBlockingModes;
+    procedure OnMessageBefore(Sender: TObject; var Msg: TMessage;
+      var Handled: Boolean);
+    procedure SetACLineStatus(Value: TabfACLineStatus);
+    procedure SetBatteryFlag(Value: TabfBatteryFlag);
+    procedure SetBatteryFullLifeTime(Value: Integer);
+    procedure SetBatteryLifePercent(Value: ShortInt);
+    procedure SetBatteryLifeTime(Value: Integer);
+    procedure SetEnabled(Value: Boolean);
+    procedure SetBlockingModes(Value: TabfAPMManagerBlockingModes);
+    procedure SetPowerCapabilities(Value: TabfPowerCapabilities);
+    procedure SetSystemBatteryState(Value: TabfSystemBatteryState);
+  protected
+    procedure UpdateBlockingModes; virtual;
+    procedure Loaded; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    function HibernateSystem(Force: Boolean): Boolean;
+    function SuspendSystem(Force: Boolean): Boolean;
+    procedure RefreshSystemPowerStatus; virtual;
+  published
+    property About;
+    property ACLineStatus: TabfACLineStatus read GetACLineStatus
+      write SetACLineStatus stored False;
+    property BatteryFlag: TabfBatteryFlag read GetBatteryFlag
+      write SetBatteryFlag stored False;
+    property BatteryFullLifeTime: Integer read GetBatteryFullLifeTime
+      write SetBatteryFullLifeTime stored False;
+    property BatteryLifePercent: ShortInt read GetBatteryLifePercent
+      write SetBatteryLifePercent stored False;
+    property BatteryLifeTime: Integer read GetBatteryLifeTime
+      write SetBatteryLifeTime stored False;
+    property BlockingModes: TabfAPMManagerBlockingModes read GetBlockingModes
+      write SetBlockingModes;
+    property Enabled: Boolean read FEnabled write SetEnabled default True;
+    property PowerCapabilities: TabfPowerCapabilities read FPowerCapabilities
+      write SetPowerCapabilities;
+    property SystemBatteryState: TabfSystemBatteryState read FSystemBatteryState
+      write SetSystemBatteryState;
+    property OnBatteryLow: TNotifyEvent read FOnBatteryLow write FOnBatteryLow;
+    property OnPowerStatusChange: TNotifyEvent read FOnPowerStatusChange
+      write FOnPowerStatusChange;
+    property OnQuerySuspend: TabfQuerySuspendEvent read FOnQuerySuspend
+      write FOnQuerySuspend;
+    property OnQuerySuspendFailed: TNotifyEvent read FOnQuerySuspendFailed
+      write FOnQuerySuspendFailed;
+    property OnResume: TNotifyEvent read FOnResume write FOnResume;
+    property OnSuspend: TNotifyEvent read FOnSuspend write FOnSuspend;
+  end;{TabfAPMManager = class(TabfComponent)}
+
+
+//==============================================================================
+// Forward declaration
+
+  TabfAPMScheduler = class;
+
+
+//==============================================================================
+// TabfAPMSchedulerOptions
+//==============================================================================
+// Prototype class for XXXOptions properties of the TabfAPMScheduler component.
+
+  TabfAPMTimerMode = (tmOneTime, tmEveryDay, tmEveryWeek);
+
+  TabfAPMSchedulerOptions = class(TPersistent)
+  private
+    FDateTime: TDateTime;
+    FEnabled: Boolean;
+    FMode: TabfAPMTimerMode;
+    FOwner: TabfAPMScheduler;
+    function GetDate: TDate;
+    function GetTime: TTime;
+    procedure SetDate(Value: TDate);
+    procedure SetEnabled(Value: Boolean);
+    procedure SetMode(Value: TabfAPMTimerMode);
+    procedure SetTime(Value: TTime);
+  protected
+    constructor Create(AOwner: TabfAPMScheduler);
+  public
+    property Date: TDate read GetDate write SetDate;
+    property Enabled: Boolean read FEnabled write SetEnabled default True;
+    property Mode: TabfAPMTimerMode read FMode write SetMode default tmOneTime;
+    property Time: TTime read GetTime write SetTime;
+  end;
+
+
+//==============================================================================
+// TabfAPMSuspendOptions
+//==============================================================================
+// Class for the SuspendOptions property of the TabfAPMScheduler component.
+
+  TabfAPMSuspendOptions = class(TabfAPMSchedulerOptions)
+  private
+    FForced: Boolean;
+  protected
+    constructor Create(AOwner: TabfAPMScheduler);
+  published
+    property Date;
+    property Enabled;
+    property Forced: Boolean read FForced write FForced default True;
+    property Mode;
+    property Time;
+  end;
+
+
+//==============================================================================
+// TabfAPMWakeUpOptions
+//==============================================================================
+// Class for the WakeUpOptions property of the TabfAPMScheduler component.
+
+  TabfAPMWakeUpOptions = class(TabfAPMSchedulerOptions)
+  published
+    property Date;
+    property Enabled;
+    property Mode;
+    property Time;
+  end;
+
+//==============================================================================
+// TabfAPMScheduler
+//==============================================================================
+// TabfAPMScheduler is a non-visual component that allows easily create APM
+// oriented timers and schedulers. Has two independent timers to control a
+// suspending and resuming of the system. Also you can specify the APM events
+// that will occur every day, week, month etc. Very useful in diagnostic, auto
+// sleep/wake-up, and "long time working" programs.
+
+  TabfAPMScheduler = class(TabfComponent)
+  private
+    FEnabled: Boolean;
+    FOnSuspend: TNotifyEvent;
+    FOnWakeUp: TNotifyEvent;
+    FSuspendOptions: TabfAPMSuspendOptions;
+    FTimerThread: TThread;
+    FWakeUpOptions: TabfAPMWakeUpOptions;
+    function GetSuspendDateTime: TDateTime;
+    function GetWakeUpDateTime: TDateTime;
+    procedure SetEnabled(Value: Boolean);
+    procedure SetSuspendDateTime(Value: TDateTime);
+    procedure SetSuspendOptions(Value: TabfAPMSuspendOptions);
+    procedure SetWakeUpDateTime(Value: TDateTime);
+    procedure SetWakeUpOptions(Value: TabfAPMWakeUpOptions);
+  protected
+    procedure Loaded; override;
+    procedure DoSuspend; virtual;
+    procedure DoWakeUp; virtual;
+    procedure UpdateTimerThread; virtual;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  published
+    property About;
+    property Enabled: Boolean read FEnabled write SetEnabled default True;
+    property SuspendDateTime: TDateTime read GetSuspendDateTime
+      write SetSuspendDateTime;
+    property SuspendOptions: TabfAPMSuspendOptions read FSuspendOptions
+      write SetSuspendOptions;
+    property WakeUpDateTime: TDateTime read GetWakeUpDateTime
+      write SetWakeUpDateTime;
+    property WakeUpOptions: TabfAPMWakeUpOptions read FWakeUpOptions
+      write SetWakeUpOptions;
+    property OnSuspend: TNotifyEvent read FOnSuspend write FOnSuspend;
+    property OnWakeUp: TNotifyEvent read FOnWakeUp write FOnWakeUp;
+  end;
+
+//==============================================================================
+// Interface to WIN32 API functions. Special for D2/C1
+//==============================================================================
+
+{$IFNDEF D3}
+function CreateWaitableTimer(lpTimerAttributes: PSecurityAttributes;
+  bManualReset: BOOL; lpTimerName: PChar): THandle; stdcall;
+function SetWaitableTimer(hTimer: THandle; var lpDueTime: TLargeInteger;
+  lPeriod: Longint; pfnCompletionRoutine: TFarProc;
+  lpArgToCompletionRoutine: Pointer; fResume: BOOL): BOOL; stdcall;
+function CancelWaitableTimer(hTimer: THandle): BOOL; stdcall;
+{$ENDIF D3}
+
+{******************************************************************************}
+implementation

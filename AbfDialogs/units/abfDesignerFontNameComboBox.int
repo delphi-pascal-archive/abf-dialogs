@@ -1,0 +1,121 @@
+{*******************************************************************************
+
+  ABF Visual Components Library, OneTouch(tm) Designer
+
+  Copyright (c) 2000-2005 ABF software, Inc.
+  All Rights Reserved.
+
+  e-mail: info@abf-dev.com
+  web:    http://www.abf-dev.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+  RESTRICTIONS
+
+  THE SOURCE CODE CONTAINED WITHIN THIS FILE AND ALL RELATED FILES OR ANY
+PORTION OF ITS CONTENTS SHALL AT NO TIME BE COPIED, TRANSFERRED, SOLD,
+DISTRIBUTED, OR OTHERWISE MADE AVAILABLE TO OTHER INDIVIDUALS WITHOUT EXPRESS
+WRITTEN CONSENT AND PERMISSION FROM THE ABF SOFTWARE, INC.
+
+  CONSULT THE END USER LICENSE AGREEMENT (EULA) FOR INFORMATION ON ADDITIONAL
+RESTRICTIONS.
+
+*******************************************************************************}
+unit abfDesignerFontNameComboBox;
+
+{$I abf.inc}
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
+  StdCtrls, Buttons, ComCtrls, ExtCtrls,
+  abfComboBoxes, abfDesignerComboBox, abfControls;
+
+type
+
+//==============================================================================
+// TfrmColorComboBoxDesigner
+//==============================================================================
+// OneTouch Designer™ form for the TabfFontNameComboBox component.
+
+  TfrmDesignerFontNameComboBox = class(TForm)
+    grpItemStyle: TGroupBox;
+      btnItemStyle0: TSpeedButton;
+      btnItemStyle1: TSpeedButton;
+      btnItemStyle2: TSpeedButton;
+        pnItemStyleSample: TPanel;
+      lbItemSample: TLabel;
+        edItemSample: TEdit;
+      chbUseSameFont: TCheckBox;
+    grpSample: TGroupBox;
+      Sample: TabfFontNameComboBox;
+    grpFontOptions: TGroupBox;
+      chbFontOptions0: TCheckBox;
+      chbFontOptions1: TCheckBox;
+      chbFontOptions2: TCheckBox;
+      chbFontOptions3: TCheckBox;
+      chbFontOptions4: TCheckBox;
+      chbFontOptions5: TCheckBox;
+    grpStyle: TGroupBox;
+      btnStyle0: TSpeedButton;
+      btnStyle1: TSpeedButton;
+      btnStyle2: TSpeedButton;
+    grpProperties: TGroupBox;
+      dlgFont: TFontDialog;
+      lbColor: TLabel;
+        cmbColor: TabfColorComboBox;
+      lbDropDownCount: TLabel;
+        edDropDownCount: TEdit;
+        udDropDownCount: TUpDown;
+      btnFont: TSpeedButton;
+      chbEnabled: TCheckBox;
+      chbEtched: TCheckBox;
+      chbFlat: TCheckBox;
+      chbFocusBorder: TCheckBox;
+    grpDevice: TGroupBox;
+      btnDevice0: TSpeedButton;
+      btnDevice1: TSpeedButton;
+      btnDevice2: TSpeedButton;
+    btnOk: TBitBtn;
+    btnCancel: TBitBtn;
+  { Event handlers }
+    procedure FormCreate(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+  { Item style routines }
+    procedure ItemStyleClick(Sender: TObject);
+    procedure edItemSampleChange(Sender: TObject);
+    procedure chbUseSameFontClick(Sender: TObject);
+  { Combobox style routines }
+    procedure StyleClick(Sender: TObject);
+  { Font device routines }
+    procedure DeviceClick(Sender: TObject);
+  { Font options routines }
+    procedure chbFontOptionsClick(Sender: TObject);
+  { Other properties routines  }
+    procedure cmbColorClick(Sender: TObject);
+    procedure btnFontClick(Sender: TObject);
+    procedure edDropDownCountChange(Sender: TObject);
+    procedure PropertiesCheckClick(Sender: TObject);
+  private
+    pnItemStyleSampleLeft,
+    pnItemStyleSampleTop: Integer;
+    procedure UpdateCharset;
+  public
+    procedure Run(ASample: TabfFontNameComboBox);
+    procedure UpdateProperties;
+  end;{TfrmDesignerFontNameComboBox = class(TForm)}
+
+
+//==============================================================================
+// Designing
+//==============================================================================
+
+procedure abfFontNameComboBoxDesign(const AComponent: TComponent);
+
+{******************************************************************************}
+implementation

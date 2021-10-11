@@ -1,0 +1,302 @@
+{*******************************************************************************
+
+  ABF Visual Components Library
+
+  Copyright (c) 2000-2005 ABF software, Inc.
+  All Rights Reserved.
+
+  e-mail: info@abf-dev.com
+  web:    http://www.abf-dev.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+  RESTRICTIONS
+
+  THE SOURCE CODE CONTAINED WITHIN THIS FILE AND ALL RELATED FILES OR ANY
+PORTION OF ITS CONTENTS SHALL AT NO TIME BE COPIED, TRANSFERRED, SOLD,
+DISTRIBUTED, OR OTHERWISE MADE AVAILABLE TO OTHER INDIVIDUALS WITHOUT EXPRESS
+WRITTEN CONSENT AND PERMISSION FROM THE ABF SOFTWARE, INC.
+
+  CONSULT THE END USER LICENSE AGREEMENT (EULA) FOR INFORMATION ON ADDITIONAL
+RESTRICTIONS.
+
+*******************************************************************************}
+unit abfDialogs;
+
+{$I abf.inc}
+
+interface
+
+uses
+{$IfDef D4}
+  ImgList,
+{$EndIf D4}
+  {$IfDef D3}ShlObj, ActiveX,{$Else D3}ShlObj2, Ole2,{$EndIf D3}
+  Windows, Messages, SysUtils, Dialogs, Forms, Classes, Controls, Graphics,
+  FileCtrl, StdCtrls, ExtCtrls,
+// ABF VCL  
+  abfClasses, abfComponents;
+
+
+const
+  {$IfDef D4}{$EXTERNALSYM BIF_BROWSEINCLUDEURLS}{$EndIf D4}
+  BIF_BROWSEINCLUDEURLS  = $0080;
+  {$IfDef D4}{$EXTERNALSYM BIF_BROWSEINCLUDEFILES}{$EndIf D4}
+  BIF_BROWSEINCLUDEFILES = $4000;
+  {$IfDef D4}{$EXTERNALSYM BIF_NEWDIALOGSTYLE}{$EndIf D4}
+  BIF_NEWDIALOGSTYLE     = $0040;
+  {$IfDef D4}{$EXTERNALSYM BIF_SHAREABLE}{$EndIf D4}
+  BIF_SHAREABLE          = $8000;
+{$IfNDef D4}
+  BIF_EDITBOX            = $0010;
+{$EndIf D4}
+
+// SHRunFileDlg Flags
+  {$IfDef D4}{$EXTERNALSYM RFF_NOBROWSE}{$EndIf D4}
+  RFF_NOBROWSE                = $01; // Removes the browse button.
+  {$IfDef D4}{$EXTERNALSYM RFF_NODEFAULT}{$EndIf D4}
+  RFF_NODEFAULT               = $02; // No default item selected.
+  {$IfDef D4}{$EXTERNALSYM RFF_CALCDIRECTORY}{$EndIf D4}
+  RFF_CALCDIRECTORY           = $04; // Calculates the working directory from the file name.
+  {$IfDef D4}{$EXTERNALSYM RFF_NOLABEL}{$EndIf D4}
+  RFF_NOLABEL                 = $08; // Removes the edit box label.
+  {$IfDef D4}{$EXTERNALSYM RFF_NOSEPARATEMEM}{$EndIf D4}
+  RFF_NOSEPARATEMEM           = $20; // Removes the Separate Memory Space check box (Windows NT only).
+
+// SHObjectProperties Flags
+  {$IfDef D4}{$EXTERNALSYM OPF_PRINTERNAME}{$EndIf D4}
+  OPF_PRINTERNAME             = $01;
+  {$IfDef D4}{$EXTERNALSYM OPF_PATHNAME}{$EndIf D4}
+  OPF_PATHNAME                = $02;
+
+
+type
+
+//==============================================================================
+// TabfCustomDlg
+//==============================================================================
+// TabfCustomDlg is a prototype of all abfXXX dialogs.
+
+  TabfCustomDlg = class(TabfComponent)
+  private
+    FCaption: string;
+    FIcon: TIcon;
+    FImageList: TImageList;
+    FText: string;
+    procedure UpdateIcon;
+  protected
+    FImageIndex: TImageIndex;
+    function GetOwnerHandle: THandle;
+  // Properties Get/Set
+    procedure SetIcon(const A: TIcon); virtual;
+    procedure SetImageList(const A: TImageList); virtual;
+    procedure SetImageIndex(A: TImageIndex); virtual;
+  // Properties
+    property Caption: string read FCaption write FCaption;
+    property Icon: TIcon read FIcon write SetIcon;
+    property ImageList: TImageList read FImageList write SetImageList;
+    property ImageIndex: TImageIndex read FImageIndex write SetImageIndex
+      default 0;
+    property Text: string read FText write FText;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    function Execute: Boolean; virtual;
+  end;{TabfCustomDlg = class(TComponent)}
+
+
+//==============================================================================
+// TabfWinAboutDlg
+//==============================================================================
+// Shows standard Windows about dialog.
+
+  TabfWinAboutDlg = class(TabfCustomDlg)
+  private
+    FAppTitle: string;
+  public
+    function Execute: Boolean; override;
+  published
+    property About;
+    property AppTitle: string read FAppTitle write FAppTitle;
+    property Caption;
+    property Icon;
+    property ImageList;
+    property ImageIndex;
+    property Text;
+  end;{TabfWinAboutDlg = class(TabfCustomDlg)}
+
+
+//==============================================================================
+// TabfSelectDirDlg
+//==============================================================================
+// Shows select directory dialog.
+
+  TabfSelectDirDlg = class(TabfCustomDlg)
+  private
+    FHelpCtx: Integer;
+    FDirectory: string;
+    FOptions: TSelectDirOpts;
+  public
+    constructor Create(AOwner: TComponent); override;
+    function Execute: Boolean; override;
+  published
+    property About;
+    property Directory: string read FDirectory write FDirectory;
+    property HelpCtx: Integer read FHelpCtx write FHelpCtx default 0;
+    property Options: TSelectDirOpts read FOptions write FOptions default [sdAllowCreate, sdPerformCreate];
+  end;{TabfSelectDirDlg = class(TabfCustomDlg)}
+
+
+//==============================================================================
+// TabfBrowseFolderDlg
+//==============================================================================
+// Shows Windows 'Browse for Folder' dialog. Has abbility to show a "Create..."
+// button that provides creating directory routines.
+
+  EabfBrowseFolderDlg = class(Exception);
+
+  TabfBrowseFolderDlg = class;
+
+  TabfBrowseFolderDlgRootDir = (sdrNone, sdrRecycleBin, sdrControlPanel,
+    sdrDesktop, sdrDesktopDir, sdrDrives, sdrFonts, sdrNetHood, sdrNetwork,
+    sdrPersonal, sdrPrinters, sdrPrograms, sdrRecent, sdrSendTo, sdrStartMenu,
+    sdrStartUp, sdrTemplates, sdrDesktopExpanded);
+
+  TabfBrowseFolderDlgOption = (sdoComputers, sdoPrinters, sdoOnlyDomains,
+    sdoReturnAncest, sdoOnlyDirs, sdoShowStatus, sdoIncludeFiles,
+    sdoIncludeUrls, sdoShowEditBox, sdoNewDialogStyle, sdoShareable);
+  TabfBrowseFolderDlgOptions = set of TabfBrowseFolderDlgOption;
+
+	TabfBFDlgInitEvent = procedure(Sender: TabfBrowseFolderDlg;
+    DialogHandle: THandle) of object;
+  // for backward capability
+	TabfBrowseFolderDlgInitializationEvent = TabfBFDlgInitEvent;
+
+	TabfBFDlgChangedEvent = procedure(Sender: TabfBrowseFolderDlg;
+    DialogHandle: THandle; const ItemIDList: PItemIDList;
+    const Folder: string) of object;
+  // for backward capability
+	TabfBrowseFolderDlgChangedEvent = TabfBFDlgChangedEvent;
+
+  TabfBrowseFolderDlg = class(TabfCustomDlg)
+  private
+    FRestart: Boolean; // Used to prevent dialog closing when new folder were created
+    FCreateButtonVisible: Boolean;
+    FCreateButtonEnabled: Boolean;
+    FOptions: TabfBrowseFolderDlgOptions;
+    FOwnerHandle: THandle;
+    FRootDir: TabfBrowseFolderDlgRootDir;
+    FPosition: TRect; // Used for saving and restoring a position of dialog.
+    FOnSelectionChanged: TabfBFDlgChangedEvent;
+    FOnInitialization: TabfBFDlgInitEvent;
+    FStatusTextAsPath: Boolean;
+    FStatusText: string;
+    function GetOptions: Integer;
+    function GetRootID: PItemIDList;
+    procedure ResetPosition;
+    procedure SavePosition;
+    procedure UpdatePosition;
+    function OldStyleDialog: Boolean;
+  // Properties Get/Set 
+    procedure SetCreateButtonEnabled(A: Boolean);
+    procedure SetCreateButtonVisible(A: Boolean);
+    function GetItem: string;
+    procedure SetItem(const A: string);
+    procedure SetSelectedFolder(const A: string);
+    procedure SetStatusText(const A: string);
+    function IsStatusTextStored: Boolean;
+  protected
+    FHandle: THandle;
+    FDisplayName, FFolder, FSelectedFolder: string;
+    FValidPath: Boolean;
+    FTreeViewHandle, FBtnOKHandle, FBtnCancelHandle, FBtnCreateHandle: THandle;
+    procedure Loaded; override;
+    procedure ResetHandles; virtual;
+    procedure CreateCreateButton; virtual;
+    procedure DestroyCreateButton; virtual;
+  public
+    constructor Create(AOwner: TComponent); override;
+    function Execute: Boolean; override;
+  // Properties
+		property DisplayName: string read FDisplayName;
+    property Handle: THandle read FHandle;
+		property ImageIndex: TImageIndex read FImageIndex;
+    property OwnerHandle: THandle read FOwnerHandle write FOwnerHandle;
+		property SelectedFolder: string read FSelectedFolder
+      write SetSelectedFolder;
+    // for backward capability
+    property Item: string read GetItem write SetItem stored False;
+  published
+  // Properties
+    property About;
+    property Caption;
+    property CreateButtonVisible: Boolean read FCreateButtonVisible
+      write SetCreateButtonVisible default True;
+    property CreateButtonEnabled: Boolean read FCreateButtonEnabled
+      write SetCreateButtonEnabled default True;
+    property Folder: string read FFolder write FFolder;
+    property Options: TabfBrowseFolderDlgOptions read FOptions write FOptions
+      default [sdoOnlyDirs, sdoShowStatus, sdoNewDialogStyle];
+    property RootDir: TabfBrowseFolderDlgRootDir read FRootDir write FRootDir
+      default sdrNone;
+    property Text;
+    property StatusText: string read FStatusText write SetStatusText
+      stored IsStatusTextStored;
+    property StatusTextAsPath: Boolean read FStatusTextAsPath
+      write FStatusTextAsPath default True;
+  // Events
+{$IfNDef C1_ONLY}
+    property OnInitialization: TabfBFDlgInitEvent read FOnInitialization
+      write FOnInitialization;
+    property OnSelectionChanged: TabfBFDlgChangedEvent
+      read FOnSelectionChanged write FOnSelectionChanged;
+{$EndIf C1_ONLY}
+  end;{TabfBrowseFolderDlg = class(TabfCustomDlg)}
+
+
+//==============================================================================
+// TabfCplDlg
+//==============================================================================
+// Shows any CPL dialog present in the Control Panel of the system or the
+// Control Panel itself. Also you can run own Cpl applets using the TabfCplDlg
+// component. Use cplCustom type, CplName property to specify a library file
+// and the CplApplet property to specify a number of applet in the library.
+// Date: 07/30/2000
+
+  TabfCplType = (
+    cplDefault, // Shows the Control Panel.
+    cplCustom,  // Name of Library are taken from the CplName property
+    cplAccessibility, cplAddRemoveHardware, cplAddRemoveProgram,
+    cplAdministrativeTools, cplDateTime, cplDisplay, cplFax, cplFolderOptions,
+    cplFonts, cplGameControllers, cplInternetOptions, cplKeyboard, cplMouse,
+    cplModem, cplMultimedia, cplNetwork, cplODBC, cplPasswords, cplPhone,
+    cplPowerOptions, cplPrinters, cplRegionalOptions, cplScanners,
+    cplScheduledTasks, cplSound, cplSystem, cplUsers);
+
+  TabfCplDlg = class(TabfCustomDlg)
+  private
+    FCplApplet: Word;
+    FCplName: TFileName;
+    FCplType: TabfCplType;
+    FPageNumber: Word;
+    procedure SetPageNumber(A: Word);
+  public
+    constructor Create(AOwner: TComponent); override;
+    function Execute: Boolean; override;
+  published
+    property About;
+    property CplName: TFileName read FCplName write FCplName;
+    property CplType: TabfCplType read FCplType write FCplType default cplDefault;
+    property CplApplet: Word read FCplApplet write FCplApplet default 0;
+    property PageNumber: Word read FPageNumber write SetPageNumber default 0;
+  end;{TabfCplDlg = class(TabfCustomDlg)}
+
+
+//==============================================================================
+// TabfRunDlg
+//==============================================================================
+// Implementation 

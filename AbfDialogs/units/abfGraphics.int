@@ -1,0 +1,250 @@
+{*******************************************************************************
+
+  ABF Visual Components Library
+
+  Copyright (c) 2000-2005 ABF software, Inc.
+  All Rights Reserved.
+
+  e-mail: info@abf-dev.com
+  web:    http://www.abf-dev.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+  RESTRICTIONS
+
+  THE SOURCE CODE CONTAINED WITHIN THIS FILE AND ALL RELATED FILES OR ANY
+PORTION OF ITS CONTENTS SHALL AT NO TIME BE COPIED, TRANSFERRED, SOLD,
+DISTRIBUTED, OR OTHERWISE MADE AVAILABLE TO OTHER INDIVIDUALS WITHOUT EXPRESS
+WRITTEN CONSENT AND PERMISSION FROM THE ABF SOFTWARE, INC.
+
+  CONSULT THE END USER LICENSE AGREEMENT (EULA) FOR INFORMATION ON ADDITIONAL
+RESTRICTIONS.
+
+*******************************************************************************}
+unit abfGraphics;
+
+{$I abf.inc}
+
+interface
+
+uses
+  Windows, Messages, Classes, SysUtils, Graphics;
+
+const
+
+//==============================================================================
+// Colors
+//==============================================================================
+
+{$IfNDef D4}
+  COLOR_HOTLIGHT = 26;
+  COLOR_GRADIENTACTIVECAPTION = 27;
+  COLOR_GRADIENTINACTIVECAPTION = 28;
+//  COLOR_ENDCOLORS = 28;
+{$EndIf D4}
+
+{$IfNDef D6}
+  COLOR_MENUHILIGHT = 29;
+  COLOR_MENUBAR = 30;
+  COLOR_ENDCOLORS = COLOR_MENUBAR;
+{$EndIf D6}
+
+{$IfNDef D7}
+  clSystemColor = $80000000;
+{$EndIf D7}
+
+// New System colors
+{$IfNDef D6}
+  clHotLight = TColor(clSystemColor or COLOR_HOTLIGHT);
+  clGradientActiveCaption = TColor(clSystemColor or COLOR_GRADIENTACTIVECAPTION);
+  clGradientInactiveCaption = TColor(clSystemColor or COLOR_GRADIENTINACTIVECAPTION);
+  clMenuHighlight = TColor(clSystemColor or COLOR_MENUHILIGHT);
+  clMenuBar = TColor(clSystemColor or COLOR_MENUBAR);
+{$EndIf D6}
+
+// New custom colors
+  clBrown = TColor($003090);
+  clOliveGreen = TColor($003030);
+  clDarkGreen = TColor($003000);
+  clDarkTeal = TColor($603000);
+  clIndigo = TColor($903030);
+  clNight = TColor($303030);
+  clOrange = TColor($0068FF);
+  clBlueGray = TColor($906060);
+  clLightOrange = TColor($0098FF);
+  clSeaGreen = TColor($609830);
+  clLightBlue = TColor($FF6830);
+  clMetal = TColor($909090);
+  clGold = TColor($00C8FF);
+  clSkyBlue = {TColor($FFFBF0);} TColor($FFC800);
+  clPlum = TColor($603090);
+  clRose = TColor($D098FF);
+  clTan = TColor($A0C8FF);
+  clLightYellow = TColor($90FFFF);
+  clLightGreen = TColor($D0FFD0);
+  clLightTurquoise = TColor($FFFFC0);
+  clPaleBlue = TColor($FFC890);
+  clLavender = TColor($FF98C0);
+  clCream = TColor($A6CAF0);
+  clMoneyGreen = TColor($C0DCC0);
+
+// Standard 16 colors set
+  CabfColors16: array [0..15] of TColor = (
+    clBlack, clMaroon, clGreen, clOlive, clNavy, clPurple, clTeal, clGray,
+    clSilver, clRed, clLime, clYellow, clBlue, clFuchsia, clAqua, clWhite);
+
+// Standard 8 colors set
+  CabfColors8: array [0..7] of TColor = (
+    clBlack, clRed, clGreen, clYellow, clBlue, clPurple, clTeal, clWhite);
+
+// Standard 2 colors set
+  CabfColors2: array [0..1] of TColor = (clBlack, clWhite);
+
+// FrontPage 2000 Text colors set
+  CabfTextColors: array[0..15] of TColor = (
+    clBlack, clWhite, clGreen, clMaroon, clOlive, clNavy, clPurple, clDkGray,
+    clYellow, clLime, clAqua, clFuchsia, clLtGray, clRed, clBlue, clTeal);
+
+// Word 2000 Background colors set
+  CabfBackgroundColors: array[0..14] of TColor = (
+    clYellow, clLime, clAqua, clFuchsia, clBlue,
+    clRed, clNavy, clGreen, clTeal, clPurple,
+    clMaroon, clOlive, clDkGray, clLtGray, clBlack);
+
+
+//==============================================================================
+// Types
+//==============================================================================
+
+type
+  TabfColorQuad = packed record
+    Red, Green, Blue, Alpha: Byte;
+  end;
+
+  TabfARGB = packed record
+    B, G, R, A: Byte;
+  end;
+
+  TabfRGBA = packed record
+    A, B, G, R: Byte;
+  end;
+
+  TabfABGR = packed record
+    R, G, B, A: Byte;
+  end;
+
+  TabfBGRA = packed record
+    A, R, G, B: Byte;
+  end;
+
+
+//==============================================================================
+// Color translation
+//==============================================================================
+
+function abfColorToString(Color: TColor): string;
+function abfStringToColor(const S: string): TColor;
+
+function abfColorToARGB(Color: TColor): LongInt;
+function abfColorToRGBA(Color: TColor): LongInt;
+function abfColorToABGR(Color: TColor): LongInt;
+function abfColorToBGRA(Color: TColor): LongInt;
+
+
+//==============================================================================
+// Color enumerates
+//==============================================================================
+
+procedure abfGetColorValues(Proc: TGetStrProc);
+function abfColorToIdent(Color: LongInt; var Ident: string): Boolean;
+function abfIdentToColor(const Ident: string; var Color: LongInt): Boolean;
+
+
+//==============================================================================
+// Determination routines
+//==============================================================================
+
+//------------------------------------------------------------------------------
+// Returns bit per pixel value for current video mode.
+function abfGetCurrentBPP: Integer;
+
+function abfGetColorUnderCursor: TColor;
+
+//------------------------------------------------------------------------------
+// Returns average carecter size for given canvas
+function abfGetAverageCharSize(Canvas: TCanvas): TPoint;
+
+
+//==============================================================================
+// Dialog functions
+//==============================================================================
+
+function abfDialogUnitsToPixelsX(DialogUnits: Word): Word;
+function abfDialogUnitsToPixelsY(DialogUnits: Word): Word;
+function abfPixelsToDialogUnitsX(PixelUnits: Word): Word;
+function abfPixelsToDialogUnitsY(PixelUnits: Word): Word;
+
+
+//==============================================================================
+// Simple graphic routines
+//==============================================================================
+
+//------------------------------------------------------------------------------
+// Fills rect on DC with specified color
+procedure abfFillRect(ADC: HDC; const ARect: TRect; AColor: TColor);
+
+//------------------------------------------------------------------------------
+// Draws a frame rect on DC with specified color
+procedure abfFrameRect(ADC: HDC; const ARect: TRect; AColor: TColor);
+
+//==============================================================================
+// VCL graphic routines
+//==============================================================================
+
+//procedure abfCopyParentImage(AControl: TControl; ACanvas: TCanvas);
+
+
+//------------------------------------------------------------------------------
+// Draws border on the ACanvas inside the ARect area with AColor and of
+// ASize wide.
+procedure abfDrawWideBorder(const Canvas: TCanvas; const ARect: TRect;
+  AColor: TColor; ASize: Integer);
+
+//------------------------------------------------------------------------------
+// Draws a simple gradient in the ARect area of the Canvas. If Horizontal is
+// True draws horizontal gradien otherwise draws vertical one.
+procedure abfDrawGradient(const Canvas: TCanvas; const ARect: TRect;
+  ColorBegin, ColorEnd: TColor; Horizontal: Boolean);
+
+
+//==============================================================================
+// Draw text routines
+//==============================================================================
+
+procedure abfDrawText(const Canvas: TCanvas; const Text: string;
+  var R: TRect; TextColor: TColor; Enabled: Boolean; DrawTextFlags: Integer);
+procedure abfDrawTextShadow(const Canvas: TCanvas; const Text: string;
+  var R: TRect; TextColor, ShadowColor: TColor; SizeX, SizeY: Integer;
+  DrawTextFlags: Integer);
+procedure abfDrawTextBorder(const Canvas: TCanvas; const Text: string;
+  const R: TRect; TextColor, BorderColor: TColor; SizeX, SizeY: Integer;
+  DrawTextFlags: Integer);
+
+
+//==============================================================================
+// Additional standard procedures
+//==============================================================================
+
+//------------------------------------------------------------------------------
+// Layered window support
+
+function abfSetLayeredWindowAttributes(Handle: THandle; Key: COLORREF;
+  Alpha: Byte; Flags: DWORD): Boolean;
+
+
+{******************************************************************************}
+implementation

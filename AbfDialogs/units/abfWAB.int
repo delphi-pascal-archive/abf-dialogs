@@ -1,0 +1,697 @@
+{*******************************************************************************
+
+  ABF Visual Components Library
+
+  Copyright (c) 2000-2005 ABF software, Inc.
+  All Rights Reserved.
+
+  e-mail: info@abf-dev.com
+  web:    http://www.abf-dev.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+  RESTRICTIONS
+
+  THE SOURCE CODE CONTAINED WITHIN THIS FILE AND ALL RELATED FILES OR ANY
+PORTION OF ITS CONTENTS SHALL AT NO TIME BE COPIED, TRANSFERRED, SOLD,
+DISTRIBUTED, OR OTHERWISE MADE AVAILABLE TO OTHER INDIVIDUALS WITHOUT EXPRESS
+WRITTEN CONSENT AND PERMISSION FROM THE ABF SOFTWARE, INC.
+
+  CONSULT THE END USER LICENSE AGREEMENT (EULA) FOR INFORMATION ON ADDITIONAL
+RESTRICTIONS.
+
+*******************************************************************************}
+unit abfWAB;
+
+{$I abf.inc}
+
+interface
+
+uses
+  Windows, Classes, SysUtils, abfComponents, abfWABUtils,
+  WabDefs, WabApi, WabIab;
+
+{*******************************************************************************
+  Units WabDefs, WabApi, WabIab, WabTags, WabCode are used in the abfWAB
+product. These unints are part of the Windows Address Book (WAB) functions
+interfaces, taken from <http://delphi-jedi.org> site. You can get more
+information about these units and the Project JEDI at <http://delphi-jedi.org>
+*******************************************************************************}
+
+type
+//==============================================================================
+// Forward declaration
+//==============================================================================
+
+  TabfWAB = class;
+
+//==============================================================================
+// TabfWABItem
+//==============================================================================
+
+  TabfWABItem = class(TCollectionItem)
+  private
+    FEntryID: PSBinary;
+    FParentID: PSBinary;
+    FSearchKey: PSBinary;
+    FCreationTime: TFileTime;
+    FLastModificationTime: TFileTime;
+    FDisplayName: string;
+    FItemType: Cardinal;
+    FReading: Boolean;
+    FWAB: TabfWAB;
+    function GetEntryID: PSBinary;
+    function GetParentID: PSBinary;
+    function GetSearchKey: PSBinary;
+    function GetCreationTime: TDateTime;
+    function GetLastModificationTime: TDateTime;
+    procedure SetEntryID(const AEntryID: PSBinary);
+    procedure SetParentID(const AParentID: PSBinary);
+    procedure SetSearchKey(const ASearchKey: PSBinary);
+  protected
+    function GetDisplayName: string; override;
+    procedure SetDisplayName(const Value: string); override;
+    function SetPropsValues(PropsCount: Byte; PropsValues: TSPropsArray;
+      DeleteProps: Boolean): Boolean; virtual;
+    property Reading: Boolean read FReading write FReading;  
+    property WAB: TabfWAB read FWAB;
+  public
+    constructor Create(ACollection: TCollection); override;
+    destructor Destroy; override;
+    procedure Assign(Source: TPersistent); override;
+    function ApplyUpdates: Boolean; virtual;
+    property CreationTime: TDateTime read GetCreationTime;
+    property EntryID: PSBinary read GetEntryID;
+    property ItemType: Cardinal read FItemType;
+    property LastModificationTime: TDateTime read GetLastModificationTime;
+    property ParentID: PSBinary read GetParentID;
+    property SearchKey: PSBinary read GetSearchKey;
+  published
+    property DisplayName;
+  end;
+
+//==============================================================================
+// TabfWABItemsCollection
+//==============================================================================
+
+  TabfWABItemsCollection = class(TCollection)
+  private
+    FWAB: TabfWAB;
+  protected
+    function GetItem(Index: Integer): TabfWABItem;
+    procedure SetItem(Index: Integer; Value: TabfWABItem);
+    function GetOwner: TPersistent;{$IFDEF D3}override;{$ELSE}virtual;{$ENDIF}
+    property WAB: TabfWAB read FWAB;
+  public
+    constructor Create(abfWABItemClass: TCollectionItemClass; AWAB: TabfWAB);
+    function Add: TabfWABItem;
+    procedure Assign(Source: TPersistent); override;
+    function Insert(Index: Integer): TabfWABItem;
+    property Items[Index: Integer]: TabfWABItem read GetItem write SetItem; default;
+  end;
+
+//==============================================================================
+// TabfWABContactItem
+//==============================================================================
+
+  TabfWABContactDefaultAddress = (wdaDefaultAddress, wdaHomeAddress,
+    wdaBusinessAddress);
+
+  TabfWABContactItem = class(TabfWABItem)
+  private
+    FItemID: Cardinal;
+    FMailUser: IMailUser;
+    FNamePrefix: string;
+    FGivenName: string;
+    FMiddleName: string;
+    FSurname: string;
+    FGender: Cardinal;
+    FNickname: string;
+    FWeddingAnniversary: TFileTime;
+    FBirthday: TFileTime;
+    FAddrType: string;
+    FEmailAddress: string;
+    FAddrTypes: TStrings;
+    FDefaultAddressIndex: Integer;
+    FEmailAddresses: TStrings;
+    FSpouseName: string;
+    FChildrenNames: TStrings;
+    FPersonalHomePage: string;
+    FHomeTelephoneNumber: string;
+    FMobileTelephoneNumber: string;
+    FPagerTelephoneNumber: string;
+    FHomeFaxNumber: string;
+    FHomeAddressCity: string;
+    FHomeAddressCountry: string;
+    FHomeAddressPostalCode: string;
+    FHomeAddressStateOrProvince: string;
+    FHomeAddressStreet: TStrings;
+    FBusinessHomePage: string;
+    FCompanyName: string;
+    FTitle: string;
+    FDepartmentName: string;
+    FOfficeLocation: string;
+    FBusinessTelephoneNumber: string;
+    FBusinessFaxNumber: string;
+    FBusinessAddressCity: string;
+    FBusinessAddressCountry: string;
+    FBusinessAddressPostalCode: string;
+    FBusinessAddressStateOrProvince: string;
+    FBusinessAddressStreet: TStrings;
+    FComment: TStrings;
+    FEMailPlainTextOnly: Boolean;
+    FIPPhone: string;
+    FConferencingServers: TStrings;
+    FDefaultConferencingServer: Integer;
+    FBackupConferencingServer: Integer;
+    FDefaultAddress: TabfWABContactDefaultAddress;
+    procedure ItemsChange(Sender: TObject);
+    function GetFileTimeProperty(ulPropTag: ULONG): TFileTime;
+    function GetULONGProperty(ulPropTag: ULONG): ULONG;
+    function GetWeddingAnniversary: TDateTime;
+    function GetBirthday: TDateTime;
+    function GetAddrType: string;
+    function GetEmailAddress: string;
+    function GetEMailPlainTextOnly: Boolean;
+    procedure SetNamePrefix(const Value: string);
+    procedure SetGivenName(const Value: string);
+    procedure SetMiddleName(const Value: string);
+    procedure SetSurname(const Value: string);
+    procedure SetGender(Value: Cardinal);
+    procedure SetNickname(const Value: string);
+    procedure SetWeddingAnniversary(Value: TDateTime);
+    procedure SetBirthday(Value: TDateTime);
+    procedure SetAddrType(const Value: string);
+    procedure SetEmailAddress(const Value: string);
+    procedure SetAddrTypes(Value: TStrings);
+    procedure SetDefaultAddressIndex(Value: Integer);
+    procedure SetEmailAddresses(Value: TStrings);
+    procedure SetSpouseName(const Value: string);
+    procedure SetChildrenNames(Value: TStrings);
+    procedure SetPersonalHomePage(const Value: string);
+    procedure SetHomeTelephoneNumber(const Value: string);
+    procedure SetMobileTelephoneNumber(const Value: string);
+    procedure SetPagerTelephoneNumber(const Value: string);
+    procedure SetHomeFaxNumber(const Value: string);
+    procedure SetHomeAddressCity(const Value: string);
+    procedure SetHomeAddressCountry(const Value: string);
+    procedure SetHomeAddressPostalCode(const Value: string);
+    procedure SetHomeAddressStateOrProvince(const Value: string);
+    procedure SetHomeAddressStreet(Value: TStrings);
+    procedure SetBusinessHomePage(const Value: string);
+    procedure SetCompanyName(const Value: string);
+    procedure SetTitle(const Value: string);
+    procedure SetDepartmentName(const Value: string);
+    procedure SetOfficeLocation(const Value: string);
+    procedure SetBusinessTelephoneNumber(const Value: string);
+    procedure SetBusinessFaxNumber(const Value: string);
+    procedure SetBusinessAddressCity(const Value: string);
+    procedure SetBusinessAddressCountry(const Value: string);
+    procedure SetBusinessAddressPostalCode(const Value: string);
+    procedure SetBusinessAddressStateOrProvince(const Value: string);
+    procedure SetBusinessAddressStreet(Value: TStrings);
+    procedure SetComment(Value: TStrings);
+    procedure SetEMailPlainTextOnly(Value: Boolean);
+    procedure SetIPPhone(const Value: string);
+    procedure SetConferencingServers(Value: TStrings);
+    procedure SetDefaultConferencingServer(Value: Integer);
+    procedure SetBackupConferencingServer(Value: Integer);
+    procedure SetDefaultAddress(Value: TabfWABContactDefaultAddress);
+  protected
+    function CheckIMailUser: Boolean; virtual;
+    function SetPropsValues(PropsCount: Byte; PropsValues: TSPropsArray;
+      DeleteProps: Boolean): Boolean; override;
+    property WAB;
+  public
+    constructor Create(ACollection: TCollection); override;
+    destructor Destroy; override;
+    procedure Assign(Source: TPersistent); override;
+    function ApplyUpdates: Boolean; override;
+    property CreationTime;
+    property EntryID;
+    property ItemType;
+    property LastModificationTime;
+    property SearchKey;
+  published
+    property DisplayName;
+    property NamePrefix: string read FNamePrefix write SetNamePrefix;
+    property GivenName: string read FGivenName write SetGivenName;
+    property MiddleName: string read FMiddleName write SetMiddleName;
+    property Surname: string read FSurname write SetSurname;
+    property Gender: Cardinal read FGender write SetGender;
+    property Nickname: string read FNickname write SetNickname;
+    property WeddingAnniversary: TDateTime read GetWeddingAnniversary
+      write SetWeddingAnniversary;
+    property Birthday: TDateTime read GetBirthday write SetBirthday;
+    property AddrType: string read GetAddrType write SetAddrType;
+    property EmailAddress: string read GetEmailAddress write SetEmailAddress;
+    property AddrTypes: TStrings read FAddrTypes write SetAddrTypes;
+    property DefaultAddressIndex: Integer read FDefaultAddressIndex
+      write SetDefaultAddressIndex;
+    property EmailAddresses: TStrings read FEmailAddresses write SetEmailAddresses;
+    property SpouseName: string read FSpouseName write SetSpouseName;
+    property ChildrenNames: TStrings read FChildrenNames write SetChildrenNames;
+    property PersonalHomePage: string read FPersonalHomePage
+      write SetPersonalHomePage;
+    property HomeTelephoneNumber: string read FHomeTelephoneNumber
+      write SetHomeTelephoneNumber;
+    property MobileTelephoneNumber: string read FMobileTelephoneNumber
+      write SetMobileTelephoneNumber;
+    property PagerTelephoneNumber: string read FPagerTelephoneNumber
+      write SetPagerTelephoneNumber;
+    property HomeFaxNumber: string read FHomeFaxNumber write SetHomeFaxNumber;
+    property HomeAddressCity: string read FHomeAddressCity
+      write SetHomeAddressCity;
+    property HomeAddressCountry: string read FHomeAddressCountry
+      write SetHomeAddressCountry;
+    property HomeAddressPostalCode: string read FHomeAddressPostalCode
+      write SetHomeAddressPostalCode;
+    property HomeAddressStateOrProvince: string read FHomeAddressStateOrProvince
+      write SetHomeAddressStateOrProvince;
+    property HomeAddressStreet: TStrings read FHomeAddressStreet
+      write SetHomeAddressStreet;
+    property BusinessHomePage: string read FBusinessHomePage
+      write SetBusinessHomePage;
+    property CompanyName: string read FCompanyName write SetCompanyName;
+    property Title: string read FTitle write SetTitle;
+    property DepartmentName: string read FDepartmentName write SetDepartmentName;
+    property OfficeLocation: string read FOfficeLocation write SetOfficeLocation;
+    property BusinessTelephoneNumber: string read FBusinessTelephoneNumber
+      write SetBusinessTelephoneNumber;
+    property BusinessFaxNumber: string read FBusinessFaxNumber
+      write SetBusinessFaxNumber;
+    property BusinessAddressCity: string read FBusinessAddressCity
+      write SetBusinessAddressCity;
+    property BusinessAddressCountry: string read FBusinessAddressCountry
+      write SetBusinessAddressCountry;
+    property BusinessAddressPostalCode: string read FBusinessAddressPostalCode
+      write SetBusinessAddressPostalCode;
+    property BusinessAddressStateOrProvince: string read FBusinessAddressStateOrProvince
+      write SetBusinessAddressStateOrProvince;
+    property BusinessAddressStreet: TStrings read FBusinessAddressStreet
+      write SetBusinessAddressStreet;
+    property Comment: TStrings read FComment write SetComment;
+    property EMailPlainTextOnly: Boolean read GetEMailPlainTextOnly
+      write SetEMailPlainTextOnly default False;
+    property IPPhone: string read FIPPhone write SetIPPhone;
+    property ConferencingServers: TStrings read FConferencingServers
+      write SetConferencingServers;
+    property DefaultConferencingServer: Integer read FDefaultConferencingServer
+      write SetDefaultConferencingServer;
+    property BackupConferencingServer: Integer read FBackupConferencingServer
+      write SetBackupConferencingServer;
+    property DefaultAddress: TabfWABContactDefaultAddress read FDefaultAddress
+      write SetDefaultAddress;
+  end;{TabfWABContactItem = class(TCollectionItem)}
+
+//==============================================================================
+// TabfWABContactsCollection
+//==============================================================================
+
+  TabfWABContactsCollection = class(TabfWABItemsCollection)
+  protected
+    function GetItem(Index: Integer): TabfWABContactItem;
+    procedure SetItem(Index: Integer; Value: TabfWABContactItem);
+    function GetOwner: TPersistent;{$IFDEF D3}override;{$ELSE}virtual;{$ENDIF}
+  public
+    constructor Create(AWAB: TabfWAB);
+    function Add: TabfWABContactItem;
+    procedure Assign(Source: TPersistent); override;
+    function Insert(Index: Integer): TabfWABContactItem;
+    property Items[Index: Integer]: TabfWABContactItem read GetItem write SetItem; default;
+  end;
+
+//==============================================================================
+// TabfWABGroupItem
+//==============================================================================
+
+  TabfWABGroupItem = class(TabfWABItem)
+  private
+    FItemID: Cardinal;
+    FDistList: IDistList;
+    FHomePage: string;
+    FTelephoneNumber: string;
+    FFaxNumber: string;
+    FCity: string;
+    FCountry: string;
+    FPostalCode: string;
+    FStateOrProvince: string;
+    FStreet: TStrings;
+    FComment: TStrings;
+    FTempVarArray: Variant;
+    procedure ItemsChange(Sender: TObject);
+    procedure SetHomePage(const Value: string);
+    procedure SetTelephoneNumber(const Value: string);
+    procedure SetFaxNumber(const Value: string);
+    procedure SetCity(const Value: string);
+    procedure SetCountry(const Value: string);
+    procedure SetPostalCode(const Value: string);
+    procedure SetStateOrProvince(const Value: string);
+    procedure SetStreet(Value: TStrings);
+    procedure SetComment(Value: TStrings);
+  protected
+    procedure AddEntry(const PSB: PSBinary);
+    function CheckIDistList: Boolean; virtual;
+    procedure DoInitDisplayName; virtual;
+    function SetPropsValues(PropsCount: Byte; PropsValues: TSPropsArray;
+      DeleteProps: Boolean): Boolean; override;
+    property WAB;
+  public
+    constructor Create(ACollection: TCollection); override;
+    destructor Destroy; override;
+    procedure Assign(Source: TPersistent); override;
+    function ApplyUpdates: Boolean; override;
+    procedure AddItems(ItemsIndexes: Variant); virtual;
+    function GetItemsArray: Variant; virtual;
+    function GetContactsArray(ProcessSubtree: Boolean): Variant; virtual;
+    procedure RemoveItems(ItemsIndexes: Variant); virtual;
+    property CreationTime;
+    property EntryID;
+    property ItemType;
+    property LastModificationTime;
+    property SearchKey;
+  published
+    property DisplayName;
+    property HomePage: string read FHomePage write SetHomePage;
+    property TelephoneNumber: string read FTelephoneNumber
+      write SetTelephoneNumber;
+    property FaxNumber: string read FFaxNumber write SetFaxNumber;
+    property City: string read FCity write SetCity;
+    property Country: string read FCountry write SetCountry;
+    property PostalCode: string read FPostalCode write SetPostalCode;
+    property StateOrProvince: string read FStateOrProvince
+      write SetStateOrProvince;
+    property Street: TStrings read FStreet write SetStreet;
+    property Comment: TStrings read FComment write SetComment;
+  end;{TabfWABGroupItem = class(TCollectionItem)}
+
+//==============================================================================
+// TabfWABGroupsCollection
+//==============================================================================
+
+  TabfWABGroupsCollection = class(TabfWABItemsCollection)
+  protected
+    function GetItem(Index: Integer): TabfWABGroupItem;
+    procedure SetItem(Index: Integer; Value: TabfWABGroupItem);
+    function GetOwner: TPersistent;{$IFDEF D3}override;{$ELSE}virtual;{$ENDIF}
+  public
+    constructor Create(AWAB: TabfWAB);
+    function Add: TabfWABGroupItem;
+    procedure Assign(Source: TPersistent); override;
+    function Insert(Index: Integer): TabfWABGroupItem;
+    property Items[Index: Integer]: TabfWABGroupItem read GetItem write SetItem; default;
+  end;
+
+//==============================================================================
+// TabfWABFolderItem
+//==============================================================================
+
+  TabfWABFolderItem = class(TabfWABItem)
+  private
+    FABContainer: IABContainer;
+    FContainerFlags: Cardinal;
+    FDisplayType: Cardinal;
+    FDistListTemplateID: PSBinary;
+    FItemID: Cardinal;
+    FMailUserTemplateID: PSBinary;
+    function GetDistListTemplateID: PSBinary;
+    function GetMailUserTemplateID: PSBinary;
+  protected
+    function CheckIABContainer: Boolean; virtual;
+    procedure DoInitDisplayName; virtual;
+    property WAB;
+  public
+    constructor Create(ACollection: TCollection); override;
+    destructor Destroy; override;
+    procedure Assign(Source: TPersistent); override;
+    function GetItemsArray: Variant; virtual;
+    function GetContactsArray(ProcessSubtree: Boolean): Variant; virtual;
+    property EntryID;
+    property DistListTemplateID: PSBinary read GetDistListTemplateID;
+    property MailUserTemplateID: PSBinary read GetMailUserTemplateID;
+    property ItemType;
+  published
+    property DisplayName;
+  end;{TabfWABFolderItem = class(TCollectionItem)}
+
+//==============================================================================
+// TabfWABFoldersCollection
+//==============================================================================
+
+  TabfWABFoldersCollection = class(TabfWABItemsCollection)
+  protected
+    function GetItem(Index: Integer): TabfWABFolderItem;
+    procedure SetItem(Index: Integer; Value: TabfWABFolderItem);
+    function GetOwner: TPersistent;{$IFDEF D3}override;{$ELSE}virtual;{$ENDIF}
+  public
+    constructor Create(AWAB: TabfWAB);
+    function Add: TabfWABFolderItem;
+    procedure Assign(Source: TPersistent); override;
+    function Insert(Index: Integer): TabfWABFolderItem;
+    property Items[Index: Integer]: TabfWABFolderItem read GetItem write SetItem; default;
+  end;
+
+//==============================================================================
+// EabfWABException
+//==============================================================================
+
+  EabfWABException = class(Exception);
+
+//==============================================================================
+//  TabfAdviseSink
+//==============================================================================
+// A wrapper-class of the IMAPIAdviseSink interface.
+
+  TabfAdviseNotifyEvent = procedure(cNotif: ULONG;
+    lpNotifications: PNotification) of object;
+
+  TabfAdviseSink = class(TInterfacedObject, IMAPIAdviseSink)
+  private
+    FOnNotifyEvent: TabfAdviseNotifyEvent;
+  public
+    function OnNotify(cNotif: ULONG;
+      lpNotifications: PNotification): ULONG; stdcall;
+    property OnNotifyEvent: TabfAdviseNotifyEvent read FOnNotifyEvent
+      write FOnNotifyEvent;
+  end;
+
+//==============================================================================
+//  TabfWAB
+//==============================================================================
+// Non-visual component TabfWAB (Windows Address Book). Provides full access to
+// the Windows Address Book or to any files in the WAB format.
+
+  TabfWABContentsFilter = (wcfAllContents, wcfSharedFolderOnly,
+    wcfProfileFolderOnly, wcfCurrentFolderOnly);
+  TabfWABAddToFolder = (wafSharedFolder, wafProfileFolder, wafCurrentFolder);
+  TabfWABMode = (wmCurrentWAB, wmWABFile);
+  TabfOnDeletingContactEvent = procedure(Sender: TObject;
+    var AllowDelete: Boolean) of object;
+  TabfOnDeletingGroupEvent = procedure(Sender: TObject;
+    var AllowDelete: Boolean) of object;
+  TabfOnDeletingItemEvent = procedure(Sender: TObject;
+    var AllowDelete: Boolean) of object;
+
+  TabfWAB = class(TabfComponent)
+  private
+    FLibHandle: THandle;
+    FWABOpen: TWABOpen;
+    FActive: Boolean;
+    FAddrBook: IAddrBook;
+    FAddToFolder: TabfWABAddToFolder;
+    FAdviseSink: IMAPIAdviseSink;
+    FAdviseSinkObject: TabfAdviseSink;
+    FCachedUpdates: Boolean;
+    FConnection: Cardinal;
+    FContacts: TabfWABContactsCollection;
+    FGroups: TabfWABGroupsCollection;
+    FEnableProfiles: Boolean;
+    FEventFired: Boolean;
+    FFileName: TFileName;
+    FFolders: TabfWABFoldersCollection;
+    FContentsFilter: TabfWABContentsFilter;
+    FCurrentContainer: IABContainer;
+    FCurrentFolder: TabfWABFolderItem;
+    FItems: TabfWABItemsCollection;
+    FLoadingProgress: Boolean;
+    FParentHandle: THandle;
+    FReadOnly: Boolean;
+    FRootContainer: IABContainer;
+    FStreamedActive: Boolean;
+    FUpdateCount: Integer;
+    FWABSharedMode: Boolean;
+    FWABMode: TabfWABMode;
+    FWABObject: IWabObject;
+    FWABVersion: string;
+    FOnOpenAddressBook: TNotifyEvent;
+    FOnCloseAddressBook: TNotifyEvent;
+    FOnDeleteContact: TNotifyEvent;
+    FOnDeleteGroup: TNotifyEvent;
+    FOnDeleteItem: TNotifyEvent;
+    FOnDeletingContact: TabfOnDeletingContactEvent;
+    FOnDeletingGroup: TabfOnDeletingGroupEvent;
+    FOnDeletingItem: TabfOnDeletingItemEvent;
+    FOnInternalItemsChange: TNotifyEvent;
+    FOnInternalContactsChange: TNotifyEvent;
+    FOnInternalGroupsChange: TNotifyEvent;
+    FOnNewContact: TNotifyEvent;
+    FOnNewGroup: TNotifyEvent;
+    FOnNewItem: TNotifyEvent;
+    FOnChangeAddressBook: TNotifyEvent;
+    function GetOutlookSharedMode: Boolean;
+    function GetParentHandle: THandle;
+    function GetCurrentFolder: TabfWABFolderItem;
+    function GetRootContainer: IABContainer;
+    procedure SetActive(Value: Boolean);
+    procedure SetCachedUpdates(Value: Boolean);
+    procedure SetContactsCollection(Value: TabfWABContactsCollection);
+    procedure SetContentsFilter(Value: TabfWABContentsFilter);
+    procedure SetCurrentFolder(Value: TabfWABFolderItem);
+    procedure SetFoldersCollection(Value: TabfWABFoldersCollection);
+    procedure SetGroupsCollection(Value: TabfWABGroupsCollection);
+    procedure SetEnableProfiles(Value: Boolean);
+    procedure SetFileName(const Value: TFileName);
+    procedure SetItemsCollection(Value: TabfWABItemsCollection);
+    procedure SetOutlookSharedMode(Value: Boolean);
+    procedure SetWABMode(Value: TabfWABMode);
+    procedure SetWABVersion(const Value: string);
+    procedure Hook_AB_Notification;
+    procedure Unhook_AB_Notification;
+  protected
+    procedure Loaded; override;
+    function GetFolderContentsTable(out ATable: IMAPITable): HResult; virtual;
+    function GetRootEntryID(var cEID: ULONG; var pEID: PEntryID): HResult; virtual;
+    function GetWABTemplateID(ObjType: ULONG; var ParentID: PSBinary;
+      var TemplateID: PSBinary): HResult; virtual;
+    function CreateEntry(ObjType: ULONG; var EID: PSBinary): HResult; virtual;
+    procedure CheckActive; virtual;
+    procedure CheckReadOnly; virtual;
+    procedure DeleteEntries(const EntriesArray: TSBinaryArray); virtual;
+    procedure DeleteWABItems(WABItems: TabfWABItemsCollection;
+      ItemsIndexes: Variant); virtual;
+    procedure DoAdviseNotify(cNotif: ULONG; lpNotifications: PNOTIFICATION);
+    procedure DoInternalEvents; virtual;
+    procedure DoOpenAddressBook; virtual;
+    procedure DoCloseAddressBook; virtual;
+    procedure DoDeleteContact; virtual;
+    procedure DoDeleteGroup; virtual;
+    procedure DoDeleteItem; virtual;
+    procedure DoDeletingContact(var AllowDelete: Boolean); virtual;
+    procedure DoDeletingGroup(var AllowDelete: Boolean); virtual;
+    procedure DoDeletingItem(var AllowDelete: Boolean); virtual;
+    procedure DoNewContact; virtual;
+    procedure DoNewGroup; virtual;
+    procedure DoNewItem; virtual;
+    procedure DoChangeAddressBook; virtual;
+    procedure DoRefreshFolders; virtual;
+    procedure DoRefreshFolderContent; virtual;
+    property LoadingProgress: Boolean read FLoadingProgress;
+    property OnInternalItemsChange: TNotifyEvent read FOnInternalItemsChange
+      write FOnInternalItemsChange;
+    property OnInternalContactsChange: TNotifyEvent read FOnInternalContactsChange
+      write FOnInternalContactsChange;
+    property OnInternalGroupsChange: TNotifyEvent read FOnInternalGroupsChange
+      write FOnInternalGroupsChange;
+    property RootContainer: IABContainer read GetRootContainer;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure ApplyUpdates; virtual;
+    procedure BeginUpdate; virtual;
+    procedure CancelUpdates; virtual;
+    procedure EndUpdate; virtual;
+    procedure Open; virtual;
+    procedure Close; virtual;
+    function ContactDetails(var ContactIndex: Integer): Boolean; virtual;
+    procedure DeleteAllContacts; virtual;
+    procedure DeleteAllGroups; virtual;
+    procedure DeleteAllItems; virtual;
+    procedure DeleteContacts(ContactsIndexes: Variant); virtual;
+    procedure DeleteGroups(GroupsIndexes: Variant); virtual;
+    procedure DeleteItems(ItemsIndexes: Variant); virtual;
+    procedure Find; virtual;
+    function GetContactIndex(const PSB: PSBinary): Integer; virtual;
+    function GetGroupIndex(const PSB: PSBinary): Integer; virtual;
+    function GetItemIndex(const PSB: PSBinary): Integer; virtual;
+    function GetMeContactIndex(AllowCreate: Boolean): Integer; virtual;
+    function GetMeItemIndex(AllowCreate: Boolean): Integer; virtual;
+    function GroupDetails(var GroupIndex: Integer): Boolean; virtual;
+    function ItemDetails(var ItemIndex: Integer): Boolean; virtual;
+    function NewContact: Integer; virtual;
+    function NewGroup: Integer; virtual;
+    function NewItem(WABItemClass: TCollectionItemClass): Integer; virtual;
+    function SetMeContact(ContactIndex: Integer; SelectDialog: Boolean): Boolean;
+    function SetMeItem(ItemIndex: Integer; SelectDialog: Boolean): Boolean;
+    procedure Refresh; virtual;
+    function VCardCreate(ContactIndex: Integer;
+      VCardFileName: TFileName): Boolean; virtual;
+    function VCardDisplay(const VCardFileName: TFileName): Boolean; virtual;
+    function VCardRetrieve(const VCardFileName: TFileName): Boolean; virtual;
+    property AddrBook: IAddrBook read FAddrBook;
+    property CurrentFolder: TabfWABFolderItem read GetCurrentFolder
+      write SetCurrentFolder;
+    property Folders: TabfWABFoldersCollection read FFolders
+      write SetFoldersCollection stored False;
+    property ParentHandle: THandle read GetParentHandle
+      write FParentHandle default 0;
+    property WABObject: IWabObject read FWABObject;
+  published
+    property About;
+    property Active: Boolean read FActive write SetActive default False;
+    property AddToFolder: TabfWABAddToFolder read FAddToFolder
+      write FAddToFolder default wafProfileFolder;
+    property CachedUpdates: Boolean read FCachedUpdates
+      write SetCachedUpdates default False;
+    property Contacts: TabfWABContactsCollection read FContacts
+      write SetContactsCollection stored False;
+    property ContentsFilter: TabfWABContentsFilter read FContentsFilter
+      write SetContentsFilter default wcfAllContents;
+    property Groups: TabfWABGroupsCollection read FGroups
+      write SetGroupsCollection stored False;
+    property EnableProfiles: Boolean read FEnableProfiles
+      write SetEnableProfiles default False;
+    property FileName: TFileName read FFileName write SetFileName;
+    property Items: TabfWABItemsCollection read FItems
+      write SetItemsCollection stored False;
+    property OutlookSharedMode: Boolean read GetOutlookSharedMode
+      write SetOutlookSharedMode stored False;
+    property ReadOnly: Boolean read FReadOnly write FReadOnly default False;
+    property WABMode: TabfWABMode read FWABMode write SetWABMode
+      default wmCurrentWAB;
+    property WABVersion: string read FWABVersion write SetWABVersion stored False;
+    property OnOpenAddressBook: TNotifyEvent read FOnOpenAddressBook
+      write FOnOpenAddressBook;
+    property OnCloseAddressBook: TNotifyEvent read FOnCloseAddressBook
+      write FOnCloseAddressBook;
+    property OnChangeAddressBook: TNotifyEvent read FOnChangeAddressBook
+      write FOnChangeAddressBook;
+    property OnDeleteContact: TNotifyEvent read FOnDeleteContact
+      write FOnDeleteContact;
+    property OnDeleteGroup: TNotifyEvent read FOnDeleteGroup
+      write FOnDeleteGroup;
+    property OnDeleteItem: TNotifyEvent read FOnDeleteItem
+      write FOnDeleteItem;
+    property OnDeletingContact: TabfOnDeletingContactEvent read FOnDeletingContact
+      write FOnDeletingContact;
+    property OnDeletingGroup: TabfOnDeletingGroupEvent read FOnDeletingGroup
+      write FOnDeletingGroup;
+    property OnDeletingItem: TabfOnDeletingItemEvent read FOnDeletingItem
+      write FOnDeletingItem;
+    property OnNewContact: TNotifyEvent read FOnNewContact write FOnNewContact;
+    property OnNewGroup: TNotifyEvent read FOnNewGroup write FOnNewGroup;
+    property OnNewItem: TNotifyEvent read FOnNewItem write FOnNewItem;
+  end;
+
+//==============================================================================
+// Additional subroutines
+//==============================================================================
+
+  function abfLoadWabDll: THandle;
+  procedure abfUnloadWabDll(Handle: THandle);
+
+{******************************************************************************}
+implementation

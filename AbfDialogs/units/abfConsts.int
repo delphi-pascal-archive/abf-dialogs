@@ -1,0 +1,194 @@
+{*******************************************************************************
+
+  ABF Visual Components Library
+
+  Copyright (c) 2000-2005 ABF software, Inc.
+  All Rights Reserved.
+
+  e-mail: info@abf-dev.com
+  web:    http://www.abf-dev.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+  RESTRICTIONS
+
+  THE SOURCE CODE CONTAINED WITHIN THIS FILE AND ALL RELATED FILES OR ANY
+PORTION OF ITS CONTENTS SHALL AT NO TIME BE COPIED, TRANSFERRED, SOLD,
+DISTRIBUTED, OR OTHERWISE MADE AVAILABLE TO OTHER INDIVIDUALS WITHOUT EXPRESS
+WRITTEN CONSENT AND PERMISSION FROM THE ABF SOFTWARE, INC.
+
+  CONSULT THE END USER LICENSE AGREEMENT (EULA) FOR INFORMATION ON ADDITIONAL
+RESTRICTIONS.
+
+*******************************************************************************}
+unit abfConsts;
+
+{$I abf.inc}
+
+interface
+
+uses
+  Consts, Graphics;
+
+const
+
+//==============================================================================
+// VCL stuff
+//==============================================================================
+
+  abfVCLVersionMajor   = 4;
+  abfVCLVersionMinor   = 0;
+  abfVCLVersionRelease = 1;
+  abfVCLVersionBuild   = 409;
+  abfVCLVersion = (abfVCLVersionMajor shl 24) or (abfVCLVersionMinor shl 16) or
+    (abfVCLVersionRelease shl 8) or abfVCLVersionBuild;
+
+  SabfVCLVersion = '4.0.1.409';
+  SabfComponentPalette = 'ABF software';
+  SabfComponentPaletteNonVisual = 'ABF non-visual';
+  SabfComponentPaletteVisual    = 'ABF visual';
+  SabfComponentPaletteEdits     = 'ABF edits';
+  SabfComponentPaletteDialogs   = 'ABF dialogs';
+  SabfAboutProperty = 'About';
+
+//==============================================================================
+// Misc
+//==============================================================================
+
+  CR = #13'';
+  LF = #10'';
+  CRLF = CR + LF;
+  SabfTrue  = 'True';
+  SabfFalse = 'False';
+  CabfBooleanValues: array[Boolean] of string = (SabfFalse, SabfTrue);
+{$IfNDef D4}
+  SPI_GETSCREENSAVERRUNNING = 114;
+{$EndIf D4}
+{$IfNDef D6}
+  {$IfDef C3}{$EXTERNALSYM WS_EX_LAYERED}{$EndIf C3}
+  WS_EX_LAYERED = $00080000;
+  {$IfDef C3}{$EXTERNALSYM LWA_COLORKEY}{$EndIf C3}
+  LWA_COLORKEY = $00000001;
+  {$IfDef C3}{$EXTERNALSYM LWA_ALPHA}{$EndIf C3}
+  LWA_ALPHA = $00000002;
+{$EndIf D6}
+
+
+//==============================================================================
+// Names, TMs, Copyrights, integration. Company data and style.
+//==============================================================================
+
+  SabfCompanyName      = 'ABF software, Inc.';
+  SabfCompanyShortName = 'ABF software';
+  SabfCopyright    = 'Copyright © 2000-2005 '   + SabfCompanyName;
+  SabfCopyrightTxt = 'Copyright (c) 2000-2005 ' + SabfCompanyName;
+  SabfAllRightsReserved = 'All Rights Reserved';
+  SabfOneTouch     = 'OneTouch™';
+  SabfOneTouchTxt  = 'OneTouch(tm)';
+  SabfOneTouchDesigner    = SabfOneTouch    + ' designer';
+  SabfOneTouchDesignerTxt = SabfOneTouchTxt + ' designer';
+
+  SabfBaseRegKey = 'Software\ABF software\';
+  SabfDefRegKey = SabfBaseRegKey + 'Version ' + SabfVCLVersion;
+
+  clABFLink: TColor = $00CAFDFC; // Color of links
+
+//==============================================================================
+// http:// consts
+//==============================================================================
+
+  SabfWeb = 'www.abf-dev.com';
+  SabfWeb_About    = SabfWeb + '/about.shtml';
+  SabfWeb_Download = SabfWeb + '/download.shtml';
+  SabfWeb_Register = SabfWeb + '/buy.shtml';
+
+//==============================================================================
+// mailto: consts
+//==============================================================================
+
+  SabfEmail = '@abf-dev.com';
+  SabfEmail_Support  = 'support'  + SabfEmail;
+  SabfEmail_Info     = 'info'     + SabfEmail;
+  SabfEmail_Sales    = 'sales'    + SabfEmail;
+  SabfEmail_Karpolan = 'karpolan' + SabfEmail;
+
+//==============================================================================
+// Borland, Delphi/C++Builder consts
+//==============================================================================
+
+  SabfDelphi  = 'Delphi';
+  SabfBuilder = 'C++Builder';
+  SabfBDS     = 'BDS';
+  SabfRegSoftwareBorland = 'Software\Borland\';
+  SabfBorland = 'Borland';
+  SabfBorlandWeb = 'www.borland.com';
+
+//==============================================================================
+// File extensions
+//==============================================================================
+
+  SabfExt_Pas = '.pas';
+  SabfExt_Dfm = '.dfm';
+  SabfExt_Dcu = '.dcu';
+  SabfExt_Dpr = '.dpr';
+
+  SabfExt_Hpp = '.hpp';
+  SabfExt_Cpp = '.cpp';
+  SabfExt_Obj = '.obj';
+  SabfExt_Bpr = '.bpr';
+
+  SabfExt_Dpk = '.dpk';
+  SabfExt_Dpl = '.dpl';
+  SabfExt_Dcp = '.dcp';
+
+  SabfExt_Bpk = '.bpk';
+  SabfExt_Mak = '.mak';
+  SabfExt_Bpl = '.bpl';
+  SabfExt_Tds = '.tds';
+
+  SabfExt_Int = '.int';
+  SabfExt_Inc = '.inc';
+  SabfExt_Dcr = '.dcr';
+  SabfExt_Res = '.res';
+
+  SabfExt_Bat = '.bat';
+  SabfExt_Exe = '.exe';
+  SabfExt_Dll = '.dll';
+  SabfExt_Log = '.log';
+  SabfExt_Ini = '.ini';
+  SabfExt_Lnk = '.lnk';
+
+  SabfExt_Cnt = '.cnt';
+  SabfExt_Hlp = '.hlp';
+  SabfExt_CHM = '.chm';
+
+  SabfExt_Wav = '.wav';
+
+  SabfExt_Txt = '.txt';
+  SabfExt_Rtf = '.rtf';
+  SabfExt_Doc = '.doc';
+
+//==============================================================================
+// Messages, captions, errors, etc.
+//==============================================================================
+
+//------------------------------------------------------------------------------
+// Not resourced
+
+{$IfDef abfTrial}
+  SabfMsgTrial =
+    'This application uses an unregistered' + CRLF +
+    'version of ABF VCL by ABF software, Inc.' + CRLF +
+    'Do you want to register ABF VCL now?';
+
+  SabfMsgHacked =
+    'This application uses a HACKED version of ABF VCL by ABF software, Inc.' + CRLF +
+    'STOP using it! It is ILLEGAL! Do you want to register ABF VCL now?';
+{$EndIf abfTrial}
+
+{******************************************************************************}
+implementation

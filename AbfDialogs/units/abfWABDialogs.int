@@ -1,0 +1,113 @@
+{*******************************************************************************
+
+  ABF Visual Components Library
+
+  Copyright (c) 2000-2005 ABF software, Inc.
+  All Rights Reserved.
+
+  e-mail: info@abf-dev.com
+  web:    http://www.abf-dev.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+  RESTRICTIONS
+
+  THE SOURCE CODE CONTAINED WITHIN THIS FILE AND ALL RELATED FILES OR ANY
+PORTION OF ITS CONTENTS SHALL AT NO TIME BE COPIED, TRANSFERRED, SOLD,
+DISTRIBUTED, OR OTHERWISE MADE AVAILABLE TO OTHER INDIVIDUALS WITHOUT EXPRESS
+WRITTEN CONSENT AND PERMISSION FROM THE ABF SOFTWARE, INC.
+
+  CONSULT THE END USER LICENSE AGREEMENT (EULA) FOR INFORMATION ON ADDITIONAL
+RESTRICTIONS.
+
+*******************************************************************************}
+unit abfWABDialogs;
+
+interface
+
+uses
+  Windows, Classes, Controls, Forms, abfComponents, WabDefs, abfWAB;
+
+type
+
+//==============================================================================
+// TabfWABAddrDlg
+//==============================================================================
+// Addresses/Contacts dialog.
+
+  TabfWABAddrDestField = (wdfTo, wdfCC, wdfBCC);
+  TabfWABAddrDestFields = set of TabfWABAddrDestField;
+
+  TabfWABAddrDlg = class(TabfComponent)
+  private
+    FAddrBookPtr: Pointer;  
+    FAddrList: PAdrList;
+    FAddrParams: PAdrParam;
+    FBrowseOnly: Boolean;
+    FBCCItems: TabfWABItemsCollection;
+    FCCItems: TabfWABItemsCollection;
+    FCaption: string;
+    FHelpContext: THelpContext;
+    FDestFieldsTitle: string;
+    FDestFields: TabfWABAddrDestFields;
+    FDestFieldFocused: TabfWABAddrDestField;
+    FToItems: TabfWABItemsCollection;
+    FTitleBCC: string;
+    FTitleCC: string;
+    FTitleTo: string;
+    FParentHandle: THandle;
+    FWAB: TabfWAB;
+    FOnClose: TNotifyEvent;
+    FOnShow: TNotifyEvent;
+    function GetParentHandle: THandle;
+    procedure SetDestFields(Value: TabfWABAddrDestFields);
+    procedure SetDestFieldFocused(Value: TabfWABAddrDestField);
+    procedure SetItemsCollection(Index: Integer;
+      Value: TabfWABItemsCollection);
+    procedure SetWAB(Value: TabfWAB);
+  protected
+    procedure CreateAddrList; virtual;
+    procedure DeflateItems; virtual;
+    procedure DoClose; dynamic;
+    procedure DoShow; dynamic;
+    procedure Notification(AComponent: TComponent;
+      AOperation: TOperation); override;
+    procedure UpdateItemsCollection; virtual;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure ClearAllFields; virtual;
+    function Execute: Boolean; virtual;
+    property BCCItems: TabfWABItemsCollection index 0 read FBCCItems
+      write SetItemsCollection stored False;
+    property CCItems: TabfWABItemsCollection index 1 read FCCItems
+      write SetItemsCollection stored False;
+    property ParentHandle: THandle read GetParentHandle
+      write FParentHandle default 0;
+    property ToItems: TabfWABItemsCollection index 2 read FToItems
+      write SetItemsCollection stored False;
+  published
+    property About;
+    property BrowseOnly: Boolean read FBrowseOnly write FBrowseOnly default False;
+    property Caption: string read FCaption write FCaption;
+    property DestFieldsTitle: string read FDestFieldsTitle write FDestFieldsTitle;
+    property DestFields: TabfWABAddrDestFields read FDestFields
+      write SetDestFields default [wdfTo, wdfCC, wdfBCC];
+    property DestFieldFocused: TabfWABAddrDestField read FDestFieldFocused
+      write SetDestFieldFocused default wdfTo;
+    property HelpContext: THelpContext read FHelpContext write
+      FHelpContext default 0;
+    property TitleBCC: string read FTitleBCC write FTitleBCC;
+    property TitleCC: string read FTitleCC write FTitleCC;
+    property TitleTo: string read FTitleTo write FTitleTo;
+    property WAB: TabfWAB read FWAB write SetWAB;
+    property OnClose: TNotifyEvent read FOnClose write FOnClose;
+    property OnShow: TNotifyEvent read FOnShow write FOnShow;
+  end;
+
+{******************************************************************************}
+implementation

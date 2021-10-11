@@ -1,0 +1,188 @@
+{*******************************************************************************
+
+  ABF Visual Components Library, OneTouch(tm) Designer
+
+  Copyright (c) 2000-2005 ABF software, Inc.
+  All Rights Reserved.
+
+  e-mail: info@abf-dev.com
+  web:    http://www.abf-dev.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+  RESTRICTIONS
+
+  THE SOURCE CODE CONTAINED WITHIN THIS FILE AND ALL RELATED FILES OR ANY
+PORTION OF ITS CONTENTS SHALL AT NO TIME BE COPIED, TRANSFERRED, SOLD,
+DISTRIBUTED, OR OTHERWISE MADE AVAILABLE TO OTHER INDIVIDUALS WITHOUT EXPRESS
+WRITTEN CONSENT AND PERMISSION FROM THE ABF SOFTWARE, INC.
+
+  CONSULT THE END USER LICENSE AGREEMENT (EULA) FOR INFORMATION ON ADDITIONAL
+RESTRICTIONS.
+
+*******************************************************************************}
+unit abfDesignerStatusBar;
+
+{$I abf.inc}
+
+interface
+
+uses
+{$IfDef D6}
+  DesignIntf, DesignEditors,
+{$Else D6}
+  DsgnIntf,
+{$EndIf D6}
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Buttons,
+  Menus, ExtCtrls, ComCtrls, StdCtrls, abfStatusBars;
+
+type
+
+{$IFDEF D4}
+  TDesigner = IDesigner;
+  {$IfDef D6}
+  TFormDesigner = IDesigner;
+  {$Else D6}
+  TFormDesigner = IFormDesigner;
+  {$EndIf D6}
+{$ENDIF}
+
+{******************************************************************************}
+{ TabfStatusPanelsEditor }
+
+  TabfStatusPanelsEditor = class(TForm)
+    btnOk: TButton;
+    btnCancel: TButton;
+    btnApply: TButton;
+    gbxPanels: TGroupBox;
+    plToolbar: TPanel;
+    sbtnNewItem: TSpeedButton;
+    sbtnDelItem: TSpeedButton;
+    sbtnUpItem: TSpeedButton;
+    sbtnDownItem: TSpeedButton;
+    plBorder: TPanel;
+    gbxPanelProperties: TGroupBox;
+    lbBevel: TLabel;
+    lbBrushColor: TLabel;
+    lbBrushStyle: TLabel;
+    lbPanelStyle: TLabel;
+    lbName: TLabel;
+    lbWidth: TLabel;
+    lbParentColor: TLabel;
+    lbParentFont: TLabel;
+    cbxBevel: TComboBox;
+    cbxBrushColor: TComboBox;
+    cbxBrushStyle: TComboBox;
+    cbxPanelStyle: TComboBox;
+    pcStyleProperties: TPageControl;
+    tsTextStyle: TTabSheet;
+    lbSpacing: TLabel;
+    Label6: TLabel;
+    lbGlyphIndex: TLabel;
+    lbLayout: TLabel;
+    lbScrollEffect: TLabel;
+    lbText: TLabel;
+    edSpacing: TEdit;
+    cbxAlignment: TComboBox;
+    edGlyphIndex: TEdit;
+    cbxLayout: TComboBox;
+    cbxScrollEffect: TComboBox;
+    edText: TEdit;
+    tsProgressBarStyle: TTabSheet;
+    lbShowCaption: TLabel;
+    Label1: TLabel;
+    lbMinValue: TLabel;
+    Label3: TLabel;
+    cbxShowCaption: TComboBox;
+    edProgress: TEdit;
+    edMinValue: TEdit;
+    edMaxValue: TEdit;
+    edName: TEdit;
+    edWidth: TEdit;
+    btnFont: TButton;
+    cbxParentColor: TComboBox;
+    cbxParentFont: TComboBox;
+    lbxPanels: TListBox;
+    cbxShowText: TComboBox;
+    lbShowText: TLabel;
+    lbPopupMenu: TLabel;
+    cbxPopupMenu: TComboBox;
+    edHint: TEdit;
+    lbHint: TLabel;
+    tsLockKeyStyle: TTabSheet;
+    lbLockKeyCaption: TLabel;
+    edLockKeyCaption: TEdit;
+    lbLockKeyType: TLabel;
+    cbxLockKeyType: TComboBox;
+    lbProgressCaption: TLabel;
+    edProgressCaption: TEdit;
+    lbProgressType: TLabel;
+    cbxProgressType: TComboBox;
+    lbLockKeyColorOn: TLabel;
+    cbxLockKeyColorOn: TComboBox;
+    lbLockKeyColorOff: TLabel;
+    cbxLockKeyColorOff: TComboBox;
+    procedure AddClick(Sender: TObject);
+    procedure DeleteClick(Sender: TObject);
+    procedure MoveUpClick(Sender: TObject);
+    procedure MoveDownClick(Sender: TObject);
+    procedure lbxPanelsClick(Sender: TObject);
+    procedure lbxPanelsKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
+    procedure lbxPanelsDragOver(Sender, Source: TObject; X, Y: Integer;
+      State: TDragState; var Accept: Boolean);
+    procedure lbxPanelsDragDrop(Sender, Source: TObject; X, Y: Integer);
+    procedure FormShow(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure PropertiesModified(Sender: TObject);
+    procedure btnApplyClick(Sender: TObject);
+    procedure cbxBrushColorChange(Sender: TObject);
+    procedure cbxParentColorChange(Sender: TObject);
+    procedure btnFontClick(Sender: TObject);
+    procedure cbxParentFontChange(Sender: TObject);
+    procedure btnOkClick(Sender: TObject);
+    procedure cbxPopupMenuKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
+    procedure cbxLockKeyTypeChange(Sender: TObject);
+    procedure cbxProgressTypeChange(Sender: TObject);
+  private
+    FEditingPanels: TabfStatusPanels;
+    FDesigner: TFormDesigner;
+    FLoadingProperties: Boolean;
+    FabfStatusBar: TabfStatusBar;
+    FCurrFont: TFont;
+    FCurrPanel: TabfStatusPanel;
+    procedure GetColorName(const St: String);
+  protected
+    function GetItemName(ItemIndex: Integer): string; virtual;
+    procedure EnableControls; virtual;
+    procedure DisableControls; virtual;
+    procedure GetProperties(Item: TabfStatusPanel); virtual;
+    function SetProperties(Item: TabfStatusPanel): Boolean; virtual;
+    procedure UpdateListbox(Item: TabfStatusPanel); virtual;
+  end;
+
+{******************************************************************************}
+{ TabfStatusPanelsEditor }
+
+  TabfStatusPanelsEditorClass = class of TabfStatusPanelsEditor;
+
+  TabfStatusPanelsPropertyEditor = class(TClassProperty)
+  public
+    procedure Edit; override;
+    function GetAttributes: TPropertyAttributes; override;
+  end;
+
+{******************************************************************************}
+{ Designing }
+
+procedure ShowAbfStatusPanelsEditor(ADesigner: TDesigner; AStatusBar: TabfStatusBar);
+function ShowAbfStatusPanelsEditorClass(ADesigner: TDesigner;
+  AStatusBar: TabfStatusBar): TabfStatusPanelsEditor;
+
+{******************************************************************************}
+implementation

@@ -1,0 +1,556 @@
+{*******************************************************************************
+
+  ABF Visual Components Library
+
+  Copyright (c) 2000-2005 ABF software, Inc.
+  All Rights Reserved.
+
+  e-mail: info@abf-dev.com
+  web:    http://www.abf-dev.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+  RESTRICTIONS
+
+  THE SOURCE CODE CONTAINED WITHIN THIS FILE AND ALL RELATED FILES OR ANY
+PORTION OF ITS CONTENTS SHALL AT NO TIME BE COPIED, TRANSFERRED, SOLD,
+DISTRIBUTED, OR OTHERWISE MADE AVAILABLE TO OTHER INDIVIDUALS WITHOUT EXPRESS
+WRITTEN CONSENT AND PERMISSION FROM THE ABF SOFTWARE, INC.
+
+  CONSULT THE END USER LICENSE AGREEMENT (EULA) FOR INFORMATION ON ADDITIONAL
+RESTRICTIONS.
+
+*******************************************************************************}
+unit abfStatusBars;
+
+{$I abf.inc}
+{.$Define abfStatusBar_NoDoubleBuffer}
+{.$Define abfStatusBar_NoSynchronize}
+
+interface
+
+uses
+{$IfDef D7}
+  Themes,
+{$EndIf D7}
+{$IfDef D4}
+  ImgList,
+{$EndIf D4}
+  Windows, Messages, SysUtils, Classes, Menus, Graphics, Controls, Forms,
+  ComCtrls,
+// ABF VCL  
+  abfComponents;
+
+{$IfNDef D3}
+const
+  CM_SYSFONTCHANGED = CM_BASE + 53;
+{$EndIf D3}
+{$IfNDef D4}
+const
+  SB_SETBKCOLOR  = $2001;
+{$EndIf D4}
+
+type
+
+//==============================================================================
+// Forward declaration
+//==============================================================================
+
+  TabfStatusBar = class;
+  TabfStatusPanel = class;
+
+//==============================================================================
+// TabfProgressBarStyle
+//==============================================================================
+
+  TabfProgressType = (aptPercent, aptCount);
+
+  TabfProgressBarStyle = class(TPersistent)
+  private
+    FCaption: string;
+    FMaxValue: Integer;
+    FMinValue: Integer;
+    FOwner: TabfStatusPanel;
+    FProgress: Integer;
+    FProgressType: TabfProgressType;
+    FShowCaption: Boolean;
+    procedure SetCaption(const Value: string);
+    procedure SetMaxValue(Value: Integer);
+    procedure SetMinValue(Value: Integer);
+    procedure SetProgress(Value: Integer);
+    procedure SetProgressType(Value: TabfProgressType);
+    procedure SetShowCaption(Value: Boolean);
+  protected
+    constructor Create(AOwner: TabfStatusPanel);
+  published
+    property Caption: string read FCaption write SetCaption;
+    property MaxValue: Integer read FMaxValue write SetMaxValue default 100;
+    property MinValue: Integer read FMinValue write SetMinValue default 0;
+    property Progress: Integer read FProgress write SetProgress default 0;
+    property ProgressType: TabfProgressType read FProgressType
+      write SetProgressType default aptPercent;
+    property ShowCaption: Boolean read FShowCaption write SetShowCaption
+      default True;
+  end;
+
+
+//==============================================================================
+// TabfTextStyle
+//==============================================================================
+
+  TabfScrollEffect = (seNone, seFromLeftToRight, seFromRightToLeft,
+    seChangeableDirection);
+  TabfTextLayout = (tlGlyphLeft, tlGlyphRight);
+
+  TabfTextStyle = class(TPersistent)
+  private
+    FAlignment: TAlignment;
+    FGlyphIndex: Integer;
+    FInternalScrollEffect: TabfScrollEffect;
+    FLayout: TabfTextLayout;
+    FOwner: TabfStatusPanel;
+    FScrollEffect: TabfScrollEffect;
+    FShowText: Boolean;
+    FSpacing: Integer;
+    FText: string;
+    FTextPosition: Integer;
+    FTextWidth: Integer;
+    procedure SetAlignment(Value: TAlignment);
+    procedure SetGlyphIndex(Value: Integer);
+    procedure SetLayout(Value: TabfTextLayout);
+    procedure SetText(const Value: string);
+    procedure SetScrollEffect(Value: TabfScrollEffect);
+    procedure SetShowText(Value: Boolean);
+    procedure SetSpacing(Value: Integer);
+  protected
+    constructor Create(AOwner: TabfStatusPanel);
+  published
+    property Alignment: TAlignment read FAlignment write SetAlignment
+      default taLeftJustify;
+    property GlyphIndex: Integer read FGlyphIndex write SetGlyphIndex
+      default -1;
+    property Layout: TabfTextLayout read FLayout write SetLayout
+      default tlGlyphLeft;
+    property ScrollEffect: TabfScrollEffect read FScrollEffect
+      write SetScrollEffect default seNone;
+    property ShowText: Boolean read FShowText write SetShowText default True;
+    property Spacing: Integer read FSpacing write SetSpacing default 2;
+    property Text: string read FText write SetText;
+  end;
+
+
+//==============================================================================
+// TabfLockKeyStyle
+//==============================================================================
+
+  TabfLockKeyType = (lktNumLock, lktCapsLock, lktScrollLock);
+
+  TabfLockKeyStyle = class(TPersistent)
+  private
+    FCaption: string;
+    FColorOff: TColor;
+    FColorOn: TColor;
+    FKeyLockStateOn: Boolean;
+    FLockKeyType: TabfLockKeyType;
+    FOwner: TabfStatusPanel;
+    procedure ChangeLockState(Value: Boolean);
+    procedure SetCaption(const Value: string);
+    procedure SetColorOff(Value: TColor);
+    procedure SetColorOn(Value: TColor);
+    procedure SetLockKeyType(Value: TabfLockKeyType);
+  protected
+    constructor Create(AOwner: TabfStatusPanel);
+  published
+    property ColorOff: TColor read FColorOff write SetColorOff
+      default clGrayText;
+    property ColorOn: TColor read FColorOn write SetColorOn
+      default clWindowText;
+    property Caption: string read FCaption write SetCaption;
+    property LockKeyType: TabfLockKeyType read FLockKeyType
+      write SetLockKeyType default lktNumLock;
+  end;
+
+
+//==============================================================================
+// TabfStatusPanel
+//==============================================================================
+
+  TabfStatusPanelStyle = (apsEmpty, apsOwnerDraw, apsText, apsProgressBar,
+    apsLockKey, apsAppHint);
+  TabfStatusPanelBevel = (apbNone, apbLowered, apbRaised);
+  EabfStatusPanelError = class(Exception);
+
+  TabfStatusPanel = class(TCollectionItem)
+  private
+{$IfDef D4}
+    FBiDiMode: TBiDiMode;
+{$EndIf D4}
+    FBevel: TabfStatusPanelBevel;
+    FBrushColor: TColor;
+    FBrushStyle: TBrushStyle;
+    FFont: TFont;
+    FHint: string;
+    FLastRect: TRect;
+    FLockKeyStyle: TabfLockKeyStyle;
+    FName: string;
+    FParentBiDiMode: Boolean;
+    FParentColor: Boolean;
+    FParentFont: Boolean;
+    FPopupMenu: TPopupMenu;
+    FProgressBarStyle: TabfProgressBarStyle;
+    FPanelStyle: TabfStatusPanelStyle;
+    FTextStyle: TabfTextStyle;
+    FVisible: Boolean;
+    FUpdateNeeded: Boolean;
+    procedure FontChanged(Sender: TObject);
+  // Properties Get/Set
+    function  GetStatusBar: TabfStatusBar;
+    procedure SetBevel(Value: TabfStatusPanelBevel);
+    procedure SetBrushColor(Value: TColor);
+    procedure SetBrushStyle(Value: TBrushStyle);
+    procedure SetFont(Value: TFont);
+    procedure SetName(const Value: string);
+    procedure SetPanelStyle(Value: TabfStatusPanelStyle);
+    procedure SetParentColor(Value: Boolean);
+    procedure SetParentFont(Value: Boolean);
+    procedure SetPopupMenu(Value: TPopupMenu);
+    function  GetProgress: Integer;
+    procedure SetProgress(Value: Integer);
+    function  GetText: string;
+    procedure SetText(const Value: string);
+    procedure SetVisible(Value: Boolean);
+    function  GetWidth: Integer;
+    procedure SetWidth(Value: Integer);
+{$IfDef D4}
+    procedure SetBiDiMode(Value: TBiDiMode);
+    procedure SetParentBiDiMode(Value: Boolean);
+    function IsBiDiModeStored: Boolean;
+{$EndIf D4}
+    function IsColorStored: Boolean;
+    function IsFontStored: Boolean;
+  protected
+    FBitmapBuffer: TBitmap;
+    FWidth: Integer;
+    function DoScroll: Boolean; virtual;
+    function GetDisplayName: string;{$IfDef D3}override;{$Else}virtual;{$EndIf}
+    function IsUniqueName(const TestName: string): Boolean; dynamic;
+  // Properties 
+    property StatusBar: TabfStatusBar read GetStatusBar;
+  public
+    constructor Create(Collection: TCollection); override;
+    destructor Destroy; override;
+    procedure Assign(Source: TPersistent); override;
+    function GetRealWidth: Integer; dynamic;
+{$IfDef D4}
+    procedure ParentBiDiModeChanged;
+    function UseRightToLeftAlignment: Boolean;
+    function UseRightToLeftReading: Boolean;
+{$EndIf D4}
+    property BitmapBuffer: TBitmap read FBitmapBuffer;
+  published
+    property Bevel: TabfStatusPanelBevel read FBevel write SetBevel
+      default apbLowered;
+    property BrushColor: TColor read FBrushColor write SetBrushColor
+      stored IsColorStored;
+    property BrushStyle: TBrushStyle read FBrushStyle write SetBrushStyle
+      default bsSolid;
+    property Font: TFont read FFont write SetFont stored IsFontStored;
+    property Hint: string read FHint write FHint;
+    property LockKeyStyle: TabfLockKeyStyle read FLockKeyStyle
+      write FLockKeyStyle;
+    property Name: string read FName write SetName;
+    property PanelStyle: TabfStatusPanelStyle read FPanelStyle
+      write SetPanelStyle default apsText;
+    property ParentColor: Boolean read FParentColor write SetParentColor
+      default True;
+    property ParentFont: Boolean read FParentFont write SetParentFont
+      default True;
+    property PopupMenu: TPopupMenu read FPopupMenu write SetPopupMenu;
+    property Progress: Integer read GetProgress write SetProgress;
+    property ProgressBarStyle: TabfProgressBarStyle read FProgressBarStyle
+      write FProgressBarStyle;
+    property Text: string read GetText write SetText;
+    property TextStyle: TabfTextStyle read FTextStyle write FTextStyle;
+    property Visible: Boolean read FVisible write SetVisible default True;
+    property Width: Integer read GetWidth write SetWidth;
+{$IfDef D4}
+    property BiDiMode: TBiDiMode read FBiDiMode write SetBiDiMode
+      stored IsBiDiModeStored;
+    property ParentBiDiMode: Boolean read FParentBiDiMode
+      write SetParentBiDiMode default True;
+{$EndIf D4}
+  end;
+
+
+//==============================================================================
+// TabfStatusPanels
+//==============================================================================
+
+  TabfStatusPanels = class(TCollection)
+  private
+    FStatusBar: TabfStatusBar;
+    function GetItem(Index: Integer): TabfStatusPanel;
+    procedure SetItem(Index: Integer; Value: TabfStatusPanel);
+  protected
+    function GetOwner: TPersistent;{$IfDef D3}override;{$Else}virtual;{$EndIf}
+    procedure SetItemName(Item: TCollectionItem);{$IfDef D3}override;{$Else}virtual;{$EndIf}
+    procedure Update(Item: TCollectionItem); override;
+  public
+    constructor Create(StatusBar: TabfStatusBar);
+  // Properties
+    property Items[Index: Integer]: TabfStatusPanel read GetItem
+      write SetItem; default;
+  end;
+
+//==============================================================================
+// TabfCustomStatusBar
+//==============================================================================
+
+{$IfNDef D4}
+  TabfCustomStatusBar = class(TWinControl)
+  private
+    FDoubleBuffered: Boolean;
+    procedure WMEraseBkgnd(var Message: TWmEraseBkgnd); message WM_ERASEBKGND;
+    procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
+  protected
+    property DoubleBuffered: Boolean read FDoubleBuffered write FDoubleBuffered;
+  end;
+{$Else D4}
+  TabfCustomStatusBar = class(TWinControl);
+{$EndIf D4}
+
+
+//==============================================================================
+// TabfStatusBar
+//==============================================================================
+// TabfStatusBar is a powerful realization of the Windows styled status-bar.
+// Provides support of icons, scrolling text, progress bars, lock key
+// indicators, and other effects. You can easily show any statistic or dynamic
+// information using this component.
+
+  TabfDrawPanelEvent = procedure(StatusBar: TabfStatusBar;
+    Panel: TabfStatusPanel; const Rect: TRect) of object;
+
+  TabfPanelClickNotifyEvent = procedure(Panel: TabfStatusPanel;
+    Button: TMouseButton; Shift: TShiftState; X, Y: Integer) of object;
+
+  TabfStatusBar = class(TabfCustomStatusBar)
+  private
+    FAbout: string;
+    FCanvas: TCanvas;
+    FCurrentPanel: TabfStatusPanel;
+    FGlyphs: TCustomImageList;
+    FGlyphsChangeLink: TChangeLink;
+    FLock: TRTLCriticalSection;
+    FPanels: TabfStatusPanels;
+    FSimpleText: string;
+    FSimplePanel: Boolean;
+    FSizeGrip: Boolean;
+    FTimerThread: TThread;
+    FUseSystemFont: Boolean;
+    FAutoHint: Boolean;
+    FOnDrawPanel: TabfDrawPanelEvent;
+    FOnHint: TNotifyEvent;
+    FOnPanelClick: TabfPanelClickNotifyEvent;
+    FOnPanelDblClick: TabfPanelClickNotifyEvent;
+{$IfNDef D4}
+    FOnResize: TNotifyEvent;
+{$EndIf D4}
+    procedure GlyphsChange(Sender: TObject);
+    procedure SyncToSystemFont;
+    procedure UpdatePanel(Index: Integer; Repaint: Boolean);
+    procedure UpdatePanels(UpdateRects, UpdateText: Boolean);
+    procedure UpdateSimpleText;
+{$IfDef D4}
+    procedure DoRightToLeftAlignment(var Str: string; AAlignment: TAlignment;
+      ARTLAlignment: Boolean);
+{$EndIf D4}
+  // Properties Get/Set
+    procedure SetGlyphs(const Value: TCustomImageList);
+    procedure SetPanels(const Value: TabfStatusPanels);
+    function  GetPanelValue(const PanelName: string): TabfStatusPanel;
+    procedure SetPanelValue(const PanelName: string;
+      const Value: TabfStatusPanel);
+    procedure SetSimplePanel(Value: Boolean);
+    procedure SetSimpleText(const Value: string);
+    procedure SetSizeGrip(Value: Boolean);
+    procedure SetUseSystemFont(Value: Boolean);
+    function IsFontStored: Boolean;
+  // Messages routines
+{$IfDef D4}
+    procedure CMBiDiModeChanged(var Message: TMessage); message CM_BIDIMODECHANGED;
+{$EndIf D4}
+    procedure CMColorChanged(var Message: TMessage); message CM_COLORCHANGED;
+    procedure CMHintShow(var Message: TMessage); message CM_HINTSHOW;
+    procedure CMParentColorChanged(var Message: TMessage); message CM_PARENTCOLORCHANGED;
+    procedure CMParentFontChanged(var Message: TMessage); message CM_PARENTFONTCHANGED;
+    procedure CMSysColorChange(var Message: TMessage); message CM_SYSCOLORCHANGE;
+    procedure CMSysFontChanged(var Message: TMessage); message CM_SYSFONTCHANGED;
+    procedure CMWinIniChange(var Message: TMessage); message CM_WININICHANGE;
+    procedure CNDrawItem(var Message: TWMDrawItem); message CN_DRAWITEM;
+    procedure WMGetTextLength(var Message: TWMGetTextLength); message WM_GETTEXTLENGTH;
+    procedure WMEraseBkGnd(var Message: TWMEraseBkGnd); message WM_ERASEBKGND;
+    procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
+    procedure WMSize(var Message: TWMSize); message WM_SIZE;
+    procedure WMTimer(var Message: TWMTimer); message WM_TIMER;
+  protected
+    procedure CreateParams(var Params: TCreateParams); override;
+    procedure CreateWnd; override;
+    procedure DestroyWnd; override;
+    procedure Loaded; override;
+    procedure Notification(AComponent: TComponent;
+      Operation: TOperation); override;
+{$IfNDef D4}
+    procedure Resize; dynamic;
+{$EndIf D4}
+{$IfDef D5}
+    procedure ChangeScale(M, D: Integer); override;
+{$EndIf D5}
+    function  GetPopupMenu: TPopupMenu; override;
+    procedure Lock; virtual;
+    procedure Unlock; virtual;
+    procedure DrawPanel(Panel: TabfStatusPanel; const Rect: TRect); virtual;
+    procedure PaintLockKey(Panel: TabfStatusPanel); virtual;
+    procedure PaintProgressBar(Panel: TabfStatusPanel); virtual;
+    procedure PaintText(Panel: TabfStatusPanel); virtual;
+    procedure CheckLockKeyPanels; virtual;
+    procedure CheckScrollPanels; virtual;
+    function  DoHint: Boolean; virtual;
+    procedure DoScrollPanels; virtual;
+    procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
+      X, Y: Integer); override;
+    procedure MouseUp(Button: TMouseButton; Shift: TShiftState;
+      X, Y: Integer); override;
+    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    function PanelByName(const PanelName: string): TabfStatusPanel; virtual;
+    function PanelAtPos(Point: TPoint): TabfStatusPanel; virtual;
+{$IfDef D4}
+    function ExecuteAction(Action: TBasicAction): Boolean; override;
+    procedure FlipChildren(AllLevels: Boolean); override;
+{$EndIf D4}
+  // Properties
+    property Canvas: TCanvas read FCanvas;
+    property PanelsValues[const PanelName: string]: TabfStatusPanel
+      read GetPanelValue write SetPanelValue; default;
+  published
+  // Properties
+    property About: string read FAbout write FAbout stored False;
+    property AutoHint: Boolean read FAutoHint write FAutoHint default False;
+    property Align default alBottom;
+    property Color default clBtnFace;
+    property DragCursor;
+    property DragMode;
+    property Enabled;
+    property Font stored IsFontStored;
+    property Glyphs: TCustomImageList read FGlyphs write SetGlyphs;
+    property Panels: TabfStatusPanels read FPanels write SetPanels;
+    property ParentColor default False;
+    property ParentFont default False;
+    property ParentShowHint;
+    property PopupMenu;
+    property ShowHint;
+    property SimplePanel: Boolean read FSimplePanel write SetSimplePanel;
+    property SimpleText: string read FSimpleText write SetSimpleText;
+    property SizeGrip: Boolean read FSizeGrip write SetSizeGrip default True;
+    property UseSystemFont: Boolean read FUseSystemFont write SetUseSystemFont
+      default True;
+    property Visible;
+{$IfDef D4}
+    property Action;
+    property Anchors;
+    property BiDiMode;
+    property BorderWidth;
+    property DragKind;
+    property Constraints;
+    property ParentBiDiMode;
+{$EndIf D4}
+  // Events 
+    property OnClick;
+    property OnDblClick;
+    property OnDragDrop;
+    property OnDragOver;
+    property OnEndDrag;
+    property OnHint: TNotifyEvent read FOnHint write FOnHint;
+    property OnMouseDown;
+    property OnMouseMove;
+    property OnMouseUp;
+    property OnDrawPanel: TabfDrawPanelEvent read FOnDrawPanel
+      write FOnDrawPanel;
+    property OnPanelClick: TabfPanelClickNotifyEvent read FOnPanelClick
+      write FOnPanelClick;
+    property OnPanelDblClick: TabfPanelClickNotifyEvent read FOnPanelDblClick
+      write  FOnPanelDblClick;
+{$IfDef D4}
+    property OnResize;
+    property OnStartDock;
+    property OnEndDock;
+{$Else D4}
+    property OnResize: TNotifyEvent read FOnResize write FOnResize;
+{$EndIf D4}
+    property OnStartDrag;
+  end;{TabfStatusBar = class(TabfCustomStatusBar)}
+
+
+//==============================================================================
+// TabfStatusBarInserter
+//==============================================================================
+// TabfStatusBarInserter is a non-visual component that allows inserting of any
+// control (panels, buttons, images, etc.) into any panel of the TStatusBar or
+// TabfStatusBar control. You can create status-bars not only static using this
+// component.
+
+  TabfStatusBarInserter = class(TabfComponent)
+  private
+    procedure SetPanelStyle;
+    procedure RestorePanelStyle;
+    procedure ResetResizingFlags;
+  // Properties Get/Set
+    procedure SetControl(const A: TControl);
+    procedure SetStatusBar(const A: TStatusBar);
+    procedure SetAbfStatusBar(const A: TabfStatusBar);
+    procedure SetPanelIndex(A: Integer);
+  protected
+    FNoResizeX, FNoResizeY: Boolean;
+    FControl: TControl;
+    FControlBoundsRect: TRect;
+    FControlParent: TWinControl;
+    FControlVisible: Boolean;
+    FOldOnDrawPanel: TDrawPanelEvent;
+    FOldOnAbfDrawPanel: TabfDrawPanelEvent;
+    FStatusBar: TStatusBar;
+    FPanelIndex: Integer;
+    FPanelStyle: TStatusPanelStyle;
+    FabfPanelStyle: TabfStatusPanelStyle;
+    FabfStatusBar: TabfStatusBar;
+    procedure Notification(AComponent: TComponent;
+      AOperation: TOperation); override;
+    procedure OnDrawPanel(AStatusBar: TStatusBar; APanel: TStatusPanel;
+      const ARect: TRect); virtual;
+    procedure OnAbfDrawPanel(AStatusBar: TabfStatusBar; APanel: TabfStatusPanel;
+      const ARect: TRect); virtual;
+  // Control manipulation
+    procedure InsertControl; virtual;
+    procedure RemoveControl; virtual;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure Refresh; virtual;
+  published
+    property About;
+    property StatusBar: TStatusBar read FStatusBar write SetStatusBar;
+    property abfStatusBar: TabfStatusBar read FabfStatusBar
+      write SetabfStatusBar;
+    property Control: TControl read FControl write SetControl;
+    property PanelIndex: Integer read FPanelIndex write SetPanelIndex default 0;
+  end;{TabfStatusBarInserter = class(TComponent)}
+
+
+{******************************************************************************}
+implementation

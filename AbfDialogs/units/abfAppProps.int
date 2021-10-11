@@ -1,0 +1,263 @@
+{*******************************************************************************
+
+  ABF Visual Components Library. TabfApplicationProperties component
+
+  Copyright (c) 2000-2005 ABF software, Inc.
+  All Rights Reserved.
+
+  e-mail: info@abf-dev.com
+  web:    http://www.abf-dev.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+  RESTRICTIONS
+
+  THE SOURCE CODE CONTAINED WITHIN THIS FILE AND ALL RELATED FILES OR ANY
+PORTION OF ITS CONTENTS SHALL AT NO TIME BE COPIED, TRANSFERRED, SOLD,
+DISTRIBUTED, OR OTHERWISE MADE AVAILABLE TO OTHER INDIVIDUALS WITHOUT EXPRESS
+WRITTEN CONSENT AND PERMISSION FROM THE ABF SOFTWARE, INC.
+
+  CONSULT THE END USER LICENSE AGREEMENT (EULA) FOR INFORMATION ON ADDITIONAL
+RESTRICTIONS.
+
+*******************************************************************************}
+unit abfAppProps;
+
+{$I abf.inc}
+
+interface
+
+uses
+{$IfDef D5}
+  AppEvnts,
+{$EndIf D5}
+{$IfDef D4}
+  ActnList,
+{$EndIf D4}
+  Windows, Messages, SysUtils, Classes, Controls, Graphics, Menus, Forms,
+  abfClasses, abfSysUtils, abfVclUtils;
+
+const
+  cDefHintColor = clInfoBk;
+  cDefHintPause = 500;
+  cDefHintShortPause = cDefHintPause div 10;
+  cDefHintHidePause = cDefHintPause * 5;
+  cDefMDThreshold = 5;
+
+type
+
+//==============================================================================
+// TabfApplicationProperties
+//==============================================================================
+// Use TabfApplicationProperties to intercept the events or assign properties of
+// the global Application object. When you add a TabfApplicationProperties
+// object to a form, the Application object forwards all events to the
+// TabfApplicationProperties object.
+
+  TabfApplicationProperties = class({$IfDef D5}TCustomApplicationEvents{$Else}TComponent{$EndIf})
+  private
+    FAbout: string;
+    FCanvas: TCanvas;
+    FChained: Boolean;
+    FHelpFile: string;
+    FHidden: Boolean;
+    FHintColor: TColor;
+    FHintHidePause: Integer;
+    FHintPause: Integer;
+    FHintShortPause: Integer;
+    FTitle: string;
+    FShowHint: Boolean;
+    FShowMainForm: Boolean;
+    FUpdateFormatSettings: Boolean;
+{$IfDef D3}
+    FUpdateMetricSettings: Boolean;
+{$EndIf D3}
+{$IfDef D4}
+    FBiDiMode: TBiDiMode;
+    FHintShortCuts: Boolean;
+    FMouseDragImmediate: Boolean;
+    FMouseDragThreshold: Integer;
+{$EndIf D4}
+{$IfDef D5}
+    FBiDiKeyboard: string;
+    FNonBiDiKeyboard: string;
+{$EndIf D5}
+    FOnPaintIcon: TNotifyEvent;
+    FOnActivate: TNotifyEvent;
+    FOnDeactivate: TNotifyEvent;
+    FOnException: TExceptionEvent;
+    FOnIdle: TIdleEvent;
+    FOnHelp: THelpEvent;
+    FOnHint: TNotifyEvent;
+    FOnMessage: TMessageEvent;
+    FOnMinimize: TNotifyEvent;
+    FOnRestore: TNotifyEvent;
+    FOnShowHint: TShowHintEvent;
+    FOnSettingsChanged: TNotifyEvent;
+    FOnActiveControlChange: TNotifyEvent;
+    FOnActiveFormChange: TNotifyEvent;
+{$IfDef D4}
+    FOnActionExecute: TActionEvent;
+    FOnActionUpdate: TActionEvent;
+    FOnShortCut: TShortCutEvent;
+{$EndIf D4}
+  // Properties Get/Set
+    function  GetCanvas: TCanvas;
+    function  GetHelpFile: TFileName;
+    procedure SetHelpFile(const A: TFileName);
+    procedure SetHidden(A: Boolean);
+    function  GetHintColor: TColor;
+    procedure SetHintColor(A: TColor);
+    function  GetHintHidePause: Integer;
+    procedure SetHintHidePause(A: Integer);
+    function  GetHintPause: Integer;
+    procedure SetHintPause(A: Integer);
+    function  GetHintShortPause: Integer;
+    procedure SetHintShortPause(A: Integer);
+    function  GetIcon: TIcon;
+    procedure SetIcon(const A: TIcon);
+    function  GetShowHint: Boolean;
+    procedure SetShowHint(A: Boolean);
+    function  GetShowMainForm: Boolean;
+    procedure SetShowMainForm(A: Boolean);
+    function  GetTitle: string;
+    procedure SetTitle(const A: string);
+    function  GetUpdateFormatSettings: Boolean;
+    procedure SetUpdateFormatSettings(A: Boolean);
+{$IfDef D3}
+    function  GetIconFont: TFont;
+    procedure SetIconFont(const A: TFont);
+    function  GetUpdateMetricSettings: Boolean;
+    procedure SetUpdateMetricSettings(A: Boolean);
+{$EndIf D3}
+{$IfDef D4}
+    function  GetBiDiMode: TBiDiMode;
+    procedure SetBiDiMode(A: TBiDiMode);
+    function  GetHintShortCuts: Boolean;
+    procedure SetHintShortCuts(A: Boolean);
+    function  GetMouseDragImmediate: Boolean;
+    procedure SetMouseDragImmediate(A: Boolean);
+    function  GetMouseDragThreshold: Integer;
+    procedure SetMouseDragThreshold(A: Integer);
+{$EndIf D4}
+{$IfDef D5}
+    function  GetBiDiKeyboard: string;
+    procedure SetBiDiKeyboard(const A: string);
+    function  GetHintFont: TFont;
+    procedure SetHintFont(const A: TFont);
+    function  GetNonBiDiKeyboard: string;
+    procedure SetNonBiDiKeyboard(const A: string);
+{$EndIf D5}
+  protected
+    FIcon: TIcon;  // The application icon design-time object.
+    procedure Loaded; override;
+    procedure UpdateProperties; virtual;
+    procedure UpdateHidden; virtual;
+{$IfDef D3}
+    procedure UpdateIconFont; virtual;
+{$EndIf D3}
+{$IfDef D5}
+    procedure UpdateHintFont; virtual;
+{$EndIf D5}
+    procedure PaintIcon; virtual;
+    procedure SettingsChanged; dynamic;
+    function  MessageHook(var Msg: TMessage): Boolean; virtual;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    property Canvas: TCanvas read GetCanvas;
+{$IfDef D3}
+    property IconFont: TFont read GetIconFont write SetIconFont;
+{$EndIf D3}
+{$IfDef D5}
+    property HintFont: TFont read GetHintFont write SetHintFont;
+{$EndIf D5}
+  published
+  // Properties
+    property About: string read FAbout write FAbout stored False;
+    property Chained: Boolean read FChained write FChained default True;
+    property HelpFile: TFileName read GetHelpFile write SetHelpFile;
+    property Hidden: Boolean read FHidden write SetHidden default False;
+    property HintColor: TColor read GetHintColor write SetHintColor
+      default cDefHintColor;
+    property HintHidePause: Integer read GetHintHidePause
+      write SetHintHidePause default cDefHintHidePause;
+    property HintPause: Integer read GetHintPause write SetHintPause
+      default cDefHintPause;
+    property HintShortPause: Integer read GetHintShortPause
+      write SetHintShortPause default cDefHintShortPause;
+    property Icon: TIcon read GetIcon write SetIcon;
+    property Title: string read GetTitle write SetTitle;
+    property ShowHint: Boolean read GetShowHint write SetShowHint default True;
+    property UpdateFormatSettings: Boolean read GetUpdateFormatSettings
+      write SetUpdateFormatSettings default True;
+    property ShowMainForm: Boolean read GetShowMainForm write SetShowMainForm
+      default True;
+{$IfDef D3}
+    property UpdateMetricSettings: Boolean read GetUpdateMetricSettings
+      write SetUpdateMetricSettings default True;
+{$EndIf D3}
+{$IfDef D4}
+    property BiDiMode: TBiDiMode read GetBiDiMode write SetBiDiMode
+      default bdLeftToRight;
+    property HintShortCuts: Boolean read GetHintShortCuts write SetHintShortCuts
+      default True;
+    property MouseDragImmediate: Boolean read GetMouseDragImmediate
+      write SetMouseDragImmediate default True;
+    property MouseDragThreshold: Integer read GetMouseDragThreshold
+      write SetMouseDragThreshold default cDefMDThreshold;
+{$EndIf D4}
+{$IfDef D5}
+    property BiDiKeyboard: string read GetBiDiKeyboard write SetBiDiKeyboard;
+    property NonBiDiKeyboard: string read GetNonBiDiKeyboard
+      write SetNonBiDiKeyboard;
+{$EndIf D5}
+  // Events
+    property OnPaintIcon: TNotifyEvent read FOnPaintIcon write FOnPaintIcon;
+    property OnSettingsChanged: TNotifyEvent read FOnSettingsChanged
+      write FOnSettingsChanged;
+    property OnActiveControlChange: TNotifyEvent read FOnActiveControlChange
+      write FOnActiveControlChange;
+    property OnActiveFormChange: TNotifyEvent read FOnActiveFormChange
+      write FOnActiveFormChange;
+{$IfDef D5}
+    property OnActionExecute;
+    property OnActionUpdate;
+    property OnActivate;
+    property OnDeactivate;
+    property OnException;
+    property OnIdle;
+    property OnHelp;
+    property OnHint;
+    property OnMessage;
+    property OnMinimize;
+    property OnRestore;
+    property OnShowHint;
+    property OnShortCut;
+{$Else D5}
+    property OnActivate: TNotifyEvent read FOnActivate write FOnActivate;
+    property OnDeactivate: TNotifyEvent read FOnDeactivate write FOnDeactivate;
+    property OnException: TExceptionEvent read FOnException write FOnException;
+    property OnIdle: TIdleEvent read FOnIdle write FOnIdle;
+    property OnHelp: THelpEvent read FOnHelp write FOnHelp;
+    property OnHint: TNotifyEvent read FOnHint write FOnHint;
+    property OnMessage: TMessageEvent read FOnMessage write FOnMessage;
+    property OnMinimize: TNotifyEvent read FOnMinimize write FOnMinimize;
+    property OnRestore: TNotifyEvent read FOnRestore write FOnRestore;
+    property OnShowHint: TShowHintEvent read FOnShowHint write FOnShowHint;
+  {$IfDef D4}
+    property OnActionExecute: TActionEvent read FOnActionExecute
+      write FOnActionExecute;
+    property OnActionUpdate: TActionEvent read FOnActionUpdate
+      write FOnActionUpdate;
+    property OnShortCut: TShortCutEvent read FOnShortCut write FOnShortCut;
+  {$EndIf D4}
+{$EndIf D5}
+  end;{TabfApplicationProperties = ...}
+
+{******************************************************************************}
+implementation

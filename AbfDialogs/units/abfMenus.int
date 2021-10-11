@@ -1,0 +1,179 @@
+{*******************************************************************************
+
+  ABF Visual Components Library
+
+  Copyright (c) 2000-2005 ABF software, Inc.
+  All Rights Reserved.
+
+  e-mail: info@abf-dev.com
+  web:    http://www.abf-dev.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+  RESTRICTIONS
+
+  THE SOURCE CODE CONTAINED WITHIN THIS FILE AND ALL RELATED FILES OR ANY
+PORTION OF ITS CONTENTS SHALL AT NO TIME BE COPIED, TRANSFERRED, SOLD,
+DISTRIBUTED, OR OTHERWISE MADE AVAILABLE TO OTHER INDIVIDUALS WITHOUT EXPRESS
+WRITTEN CONSENT AND PERMISSION FROM THE ABF SOFTWARE, INC.
+
+  CONSULT THE END USER LICENSE AGREEMENT (EULA) FOR INFORMATION ON ADDITIONAL
+RESTRICTIONS.
+
+*******************************************************************************}
+unit abfMenus;
+
+{$I abf.inc}
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Classes, Controls, Forms, Menus, abfComponents;
+
+type
+
+//==============================================================================
+// TabfCustomSystemMenuHook
+//==============================================================================
+// A prototype of all system menu hooks
+// Note: ImageList of menu should not be specified for properly submenu drawing.
+
+  TabfCustomSystemMenuHook = class(TabfCustomWndProcHook)
+  protected
+    FInserted: Boolean;
+    FInsertToAppMenu: Boolean;
+    FPosition: Integer;
+    procedure Loaded; override;
+    procedure MessageProc(Sender: TObject; var Msg: TMessage;
+      var Handled: Boolean); virtual;
+  // Properties Get/Set
+    procedure SetHandle(A: THandle); override;
+    function  GetMenuHandle: THandle; virtual;
+    function  GetInserted: Boolean; virtual;
+    procedure SetInserted(A: Boolean); virtual;
+    procedure SetInsertToAppMenu(A: Boolean); virtual;
+    procedure SetPosition(A: Integer); virtual;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure Insert; virtual;
+    procedure Remove; virtual;
+  // Properties
+    property MenuHandle: THandle read GetMenuHandle;
+    property Inserted: Boolean read GetInserted write SetInserted default True;
+    property InsertToAppMenu: Boolean read FInsertToAppMenu
+      write SetInsertToAppMenu default False;
+    property Position: Integer read FPosition write SetPosition default 0;
+  end;{TabfCustomSystemMenuHook = class(TabfCustomWndProcHook)}
+
+
+//==============================================================================
+// TabfSystemMenuItem
+//==============================================================================
+// TabfSystemMenuItem is a non-visual component that adds a menu item into the
+// system menu of any window, form or application. The menu item can be taken
+// from any TMainManu or TPopupMenu components are present on the form.
+// The component adds item to the form's system menu by default. Set the
+// InsertToAppMenu property True to add a menu item to the system menu of the
+// application. Use public Handle property to specify any other window by its
+// handle.
+// Note: ImageList of menu should not be specified for properly submenu drawing.
+
+  TabfSystemMenuItem = class(TabfCustomSystemMenuHook)
+  protected
+    FCommand: Integer;
+    FMenuItem: TMenuItem;
+    procedure Hook; override;
+    procedure UnHook; override;
+    procedure Notification(AComponent: TComponent;
+      Operation: TOperation); override;
+    procedure MessageProc(Sender: TObject; var Msg: TMessage;
+      var Handled: Boolean); override;
+  // Properties Get/Set
+    function GetCommand: Integer; virtual;
+    function GetSubMenuHandle: THandle; virtual;
+    procedure SetMenuItem(const A: TMenuItem); virtual;
+  public
+    constructor Create(AOwner: TComponent); override;
+  // Properties
+    property Command: Integer read GetCommand;
+    property MenuHandle;
+    property SubMenuHandle: THandle read GetSubMenuHandle;
+  published
+    property About;
+    property Inserted;
+    property InsertToAppMenu;
+    property MenuItem: TMenuItem read FMenuItem write SetMenuItem;
+    property Position;
+  end;{TabfSystemMenuItem = class(TabfCustomSystemMenuHook)}
+
+
+//==============================================================================
+// TabfSystemMenuInserter
+//==============================================================================
+// TabfSystemMenuInserter is a non-visual component that adds all items of some
+// TPopupMenu component into the system menu of any window, form or application.
+// The component adds items to the form's system menu by default. Set the
+// InsertToAppMenu property True to add menu items to the system menu of the
+// application. Use public Handle property to specify any other window by its
+// handle.
+// Note: ImageList of menu should not be specified for properly submenu drawing.
+
+  TabfSystemMenuInserter = class(TabfCustomSystemMenuHook)
+  protected
+    FPopupMenu: TPopupMenu;
+    procedure Hook; override;
+    procedure UnHook; override;
+    procedure Notification(AComponent: TComponent;
+      Operation: TOperation); override;
+    procedure MessageProc(Sender: TObject; var Msg: TMessage;
+      var Handled: Boolean); override;
+  // Properties Get/Set
+    procedure SetPopupMenu(const A: TPopupMenu); virtual;
+  public
+  // Properties
+    property MenuHandle;
+  published
+    property About;
+    property Inserted;
+    property InsertToAppMenu;
+    property PopupMenu: TPopupMenu read FPopupMenu write SetPopupMenu;
+    property Position;
+  end;{TabfSystemMenuInserter = class(TabfCustomSystemMenuHook)}
+
+
+//==============================================================================
+// TabfPopupMenu
+//==============================================================================
+// Enchanced popup menu component. Has Visible property and OnClose event
+
+  TabfPopupMenu = class(TPopupMenu)
+  private
+    FAbout: string;
+    FVisible: Boolean;
+    FOnClose: TNotifyEvent;
+   public
+     procedure Popup(X, Y: Integer); override;
+     property Visible: Boolean read FVisible;
+   published
+     property About: string read FAbout write FAbout stored False;
+     property OnClose: TNotifyEvent read FOnClose write FOnClose;
+   end;
+
+
+//==============================================================================
+// Menu utilities
+//==============================================================================
+
+//------------------------------------------------------------------------------
+// Inserts delphi styled menu item into windows menu.
+
+function abfInsertMenuItem(Menu: HMENU; MenuItem: TMenuItem; Position: Integer;
+  Command: Word; ARightToLeft: Boolean): Boolean;
+
+{******************************************************************************}
+implementation
